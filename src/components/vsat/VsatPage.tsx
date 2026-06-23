@@ -2,7 +2,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
-import { Trophy, CalendarDays, ShieldCheck, Sparkles, IndianRupee, Loader2, CheckCircle2 } from "lucide-react";
+import { 
+  Trophy, CalendarDays, ShieldCheck, Sparkles, 
+  IndianRupee, Loader2, CheckCircle2, 
+  BookOpen, Clock, FileText, MonitorCheck,
+  Calendar
+} from "lucide-react";
 import { toast } from "sonner";
 
 const schema = z.object({
@@ -24,11 +29,11 @@ const prizes = [
 ];
 
 const timeline = [
-  { date: "15 Jul 2026", label: "Registrations open" },
-  { date: "30 Sep 2026", label: "Registrations close" },
-  { date: "12 Oct 2026", label: "Admit cards released" },
-  { date: "26 Oct 2026", label: "Test day (online, 2 hours)" },
-  { date: "10 Nov 2026", label: "Results & scholarships" },
+  { date: "15 Jul 2026", label: "Registrations open", icon: BookOpen },
+  { date: "30 Sep 2026", label: "Registrations close", icon: Clock },
+  { date: "12 Oct 2026", label: "Admit cards released", icon: FileText },
+  { date: "26 Oct 2026", label: "Test day (online, 2 hours)", icon: MonitorCheck },
+  { date: "10 Nov 2026", label: "Results & scholarships", icon: Trophy },
 ];
 
 const points = [
@@ -46,6 +51,23 @@ export function VsatPage() {
     formState: { errors, isSubmitting },
     reset,
   } = useForm<Form>({ resolver: zodResolver(schema) });
+
+  const now = new Date();
+  const activeIndex = timeline.findIndex(t => new Date(t.date) >= now);
+
+  const timelineWithStatus = timeline.map((t, i) => {
+    let status: "past" | "active" | "upcoming";
+    if (activeIndex === -1) {
+      status = "past";
+    } else if (i < activeIndex) {
+      status = "past";
+    } else if (i === activeIndex) {
+      status = "active";
+    } else {
+      status = "upcoming";
+    }
+    return { ...t, status };
+  });
 
   async function onSubmit(values: Form) {
     // Simulate network delay for Firebase preparation
@@ -131,21 +153,61 @@ export function VsatPage() {
       </section>
 
       {/* Timeline */}
-      <section id="syllabus" className="border-y border-navy/10 bg-navy py-20 text-cream">
+      <section id="timeline" className="border-y border-navy/10 bg-navy py-20 text-cream overflow-hidden">
         <div className="mx-auto max-w-7xl px-6">
-          <span className="text-xs font-bold uppercase tracking-[0.22em] text-saffron">Timeline</span>
-          <h2 className="mt-3 font-display text-4xl font-black md:text-5xl">
-            Mark these dates.
-          </h2>
-          <ol className="mt-10 grid gap-5 md:grid-cols-5">
-            {timeline.map((t, i) => (
-              <li key={t.label} className="relative rounded-2xl border border-cream/15 bg-cream/5 p-5">
-                <span className="font-display text-3xl font-black text-saffron">{String(i + 1).padStart(2, "0")}</span>
-                <p className="mt-2 text-sm font-semibold">{t.date}</p>
-                <p className="text-xs text-cream/70">{t.label}</p>
-              </li>
-            ))}
-          </ol>
+          <div className="text-center md:text-left mb-16">
+             <span className="text-xs font-bold uppercase tracking-[0.22em] text-saffron">Timeline</span>
+             <h2 className="mt-3 font-display text-4xl font-black md:text-5xl">Scholarship Journey.</h2>
+          </div>
+          
+          <div className="relative">
+             {/* Continuous horizontal line (hidden on mobile) */}
+             <div className="hidden md:block absolute top-12 left-[10%] right-[10%] h-[2px] bg-cream/10 z-0" />
+             
+             {/* Active Fill Line */}
+             <div 
+               className="hidden md:block absolute top-12 left-[10%] h-[2px] bg-saffron z-0 transition-all duration-1000 ease-in-out" 
+               style={{ width: `${activeIndex === -1 ? 80 : (activeIndex / (timeline.length - 1)) * 80}%` }} 
+             />
+             
+             <div className="grid gap-12 md:grid-cols-5 md:gap-4 relative z-10">
+               {timelineWithStatus.map((t) => {
+                 const isActive = t.status === "active";
+                 const isPast = t.status === "past";
+                 const Icon = t.icon;
+
+                 return (
+                   <div key={t.label} className="relative flex flex-col items-center text-center group">
+                     {/* Milestone Icon Badge */}
+                     <div className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full border-4 transition-all duration-300 ${
+                       isActive 
+                         ? 'border-saffron bg-navy text-saffron shadow-[0_0_30px_rgba(244,112,11,0.4)] scale-110' 
+                         : isPast
+                           ? 'border-saffron bg-[#2c1d11] text-saffron'
+                           : 'border-cream/10 bg-cream/5 text-cream/40 group-hover:border-cream/30 group-hover:text-cream/60'
+                     }`}>
+                       <Icon size={32} className={`transition-transform duration-300 ${isActive ? 'scale-110' : ''}`} />
+                     </div>
+
+                     {/* Content */}
+                     <div className="mt-8 flex flex-col items-center">
+                       <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                         isActive ? 'bg-saffron/10 text-saffron ring-1 ring-saffron/30' : 'bg-cream/5 text-cream/60'
+                       }`}>
+                         <Calendar size={12} />
+                         {t.date}
+                       </span>
+                       <p className={`mt-4 text-sm font-semibold transition-colors duration-300 ${
+                         isActive || isPast ? 'text-cream' : 'text-cream/60'
+                       }`}>
+                         {t.label}
+                       </p>
+                     </div>
+                   </div>
+                 );
+               })}
+             </div>
+          </div>
         </div>
       </section>
 

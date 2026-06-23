@@ -6,17 +6,18 @@ type Props = {
 
 export function WaveDivider({ fill = "#FFF8F0", flip = false, className = "" }: Props) {
   return (
-    <svg
-      viewBox="0 0 1440 80"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      className={`block w-full ${flip ? "rotate-180" : ""} ${className}`}
-      style={{ height: 80 }}
-    >
-      <path
-        d="M0,40 C220,90 380,0 720,30 C1060,60 1240,10 1440,50 L1440,80 L0,80 Z"
-        fill={fill}
-      />
-    </svg>
+    <div className={`w-full overflow-hidden leading-[0] ${className}`}>
+      <svg
+        viewBox="0 0 1440 120"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        className={`relative block w-[calc(100%+1.3px)] h-[40px] md:h-[60px] lg:h-[90px] ${flip ? "scale-x-[-1]" : ""}`}
+      >
+        <path
+          d="M0,80 C320,120 420,0 840,40 C1160,70 1300,20 1440,60 L1440,120 L0,120 Z"
+          fill={fill}
+        />
+      </svg>
+    </div>
   );
 }

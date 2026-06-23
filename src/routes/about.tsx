@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Gamepad2, Bot, Cookie, Star, Target, Eye, Sparkles, ArrowUpRight } from "lucide-react";
+import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
+import React, { useRef, useEffect } from "react";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -44,6 +46,72 @@ const tiers = [
     body: "We help you set up and manage your study groups when you become our partner.",
   },
 ];
+
+const characters = {
+  students: "https://api.dicebear.com/9.x/micah/svg?seed=Annie&backgroundColor=transparent",
+  board: "https://api.dicebear.com/9.x/micah/svg?seed=Felix&backgroundColor=transparent",
+  live: "https://api.dicebear.com/9.x/micah/svg?seed=Christian&backgroundColor=transparent"
+};
+
+function InteractiveStatCard({ 
+  endValue, 
+  suffix, 
+  title, 
+  imageSrc 
+}: { 
+  endValue: number; 
+  suffix: string; 
+  title: string; 
+  imageSrc: string; 
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => Math.round(latest).toLocaleString());
+
+  useEffect(() => {
+    if (isInView) {
+      animate(count, endValue, { duration: 2.5, ease: "easeOut" });
+    }
+  }, [isInView, endValue, count]);
+
+  return (
+    <motion.div 
+      ref={ref}
+      className="group relative overflow-hidden rounded-[2rem] bg-[#FFF8E8] p-8 md:p-10 shadow-[0_15px_40px_-15px_rgba(27,42,74,0.1)] transition-all duration-300 hover:shadow-[0_30px_60px_-15px_rgba(244,112,11,0.25)] cursor-pointer flex flex-col justify-center items-center"
+      initial={{ height: 220 }}
+      whileHover={{ height: 340 }}
+      whileTap={{ height: 340 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    >
+      <motion.div 
+        className="relative z-20 flex flex-col items-center justify-center text-center w-full"
+        initial={{ y: 0 }}
+        whileHover={{ y: -60 }}
+        whileTap={{ y: -60 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
+        <div className="flex items-baseline font-display text-5xl font-black text-navy md:text-6xl tracking-tight">
+          <motion.span>{rounded}</motion.span>
+          <span className="ml-1">{suffix}</span>
+        </div>
+        <p className="mt-2 text-xl font-medium text-navy/80">{title}</p>
+      </motion.div>
+
+      <motion.div 
+        className="absolute bottom-0 left-0 right-0 z-10 w-full flex justify-center pointer-events-none px-4"
+        initial={{ y: "100%", opacity: 0 }}
+        whileHover={{ y: 0, opacity: 1 }}
+        whileTap={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut", delay: 0.05 }}
+      >
+        <div className="w-full h-48 max-w-[280px] flex justify-center items-end pb-4">
+          <img src={imageSrc} alt={title} className="w-40 h-40 object-contain drop-shadow-xl" />
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 function AboutPage() {
   return (
@@ -158,22 +226,28 @@ function AboutPage() {
       {/* Stat strip */}
       <section className="pb-24">
         <div className="mx-auto max-w-6xl px-6">
-          <div className="rounded-3xl bg-gradient-to-br from-saffron to-saffron-soft p-8 text-cream md:p-12">
-            <div className="grid gap-8 md:grid-cols-3">
-              {[
-                { k: "52,000+", v: "Students learning" },
-                { k: "96%", v: "Board pass rate" },
-                { k: "1,240+", v: "Live classes / month" },
-              ].map((s) => (
-                <div key={s.v}>
-                  <p className="font-display text-5xl font-black md:text-6xl">{s.k}</p>
-                  <p className="mt-2 text-cream/85">{s.v}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-8 flex items-center gap-2 text-sm text-cream/85">
-              <Sparkles size={16} /> Numbers updated quarterly.
-            </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            <InteractiveStatCard 
+              endValue={52000} 
+              suffix="+" 
+              title="Students learning" 
+              imageSrc={characters.students} 
+            />
+            <InteractiveStatCard 
+              endValue={96} 
+              suffix="%" 
+              title="Board pass rate" 
+              imageSrc={characters.board} 
+            />
+            <InteractiveStatCard 
+              endValue={1240} 
+              suffix="+" 
+              title="Live classes / month" 
+              imageSrc={characters.live} 
+            />
+          </div>
+          <div className="mt-10 flex items-center justify-center gap-2 text-sm text-ink/60">
+            <Sparkles size={16} className="text-saffron" /> Hover over the cards to see the impact. Numbers updated quarterly.
           </div>
         </div>
       </section>

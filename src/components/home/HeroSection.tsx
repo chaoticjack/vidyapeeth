@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, PlayCircle, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Users } from "lucide-react";
 import { HeroIllustration } from "@/components/illustrations/HeroIllustration";
 
 export function HeroSection() {
@@ -59,14 +59,6 @@ export function HeroSection() {
               Book a free demo
               <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
             </Link>
-            <Link
-              to="/courses"
-              data-cursor="lift"
-              className="group inline-flex items-center gap-2 rounded-full border border-navy/20 px-6 py-4 text-base font-semibold text-navy transition-all hover:border-navy hover:bg-navy hover:text-cream"
-            >
-              <PlayCircle size={18} className="text-saffron transition-colors group-hover:text-cream" />
-              See how a class runs
-            </Link>
           </div>
 
           <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-ink">
@@ -90,9 +82,12 @@ export function HeroSection() {
         >
           <HeroIllustration className="mx-auto h-auto w-full max-w-[440px]" />
           <div className="absolute -bottom-2 left-2 hidden rounded-2xl border border-navy/10 bg-card px-4 py-3 shadow-xl md:block">
-            <p className="font-display text-xs uppercase tracking-[0.2em] text-navy/60">Today</p>
-            <p className="font-display text-lg font-bold text-navy">Algebra — Doubt Room</p>
-            <p className="text-xs text-ink">Live · 18 students · Mr. Verma</p>
+            <p className="font-display text-xs uppercase tracking-[0.2em] text-navy/60">Trusted By</p>
+            <div className="mt-0.5 flex items-center gap-1.5">
+              <p className="font-display text-xl font-black text-navy">5,000+ Students</p>
+              <Users size={16} className="text-saffron" />
+            </div>
+            <p className="mt-0.5 text-xs text-ink">Across India · Learning Daily</p>
           </div>
         </motion.div>
       </div>

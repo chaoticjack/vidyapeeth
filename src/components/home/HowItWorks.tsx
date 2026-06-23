@@ -1,49 +1,34 @@
-import { useEffect, useRef } from "react";
+import { ArrowRight } from "lucide-react";
 import { howSteps } from "@/data/home";
 import { Step1, Step2, Step3 } from "@/components/illustrations/HowSteps";
 
 const icons = [Step1, Step2, Step3];
 
+const cardStyles = [
+  {
+    bg: "bg-card border-navy/10 shadow-sm",
+    hover: "hover:-translate-y-2 hover:border-saffron/50 hover:shadow-xl hover:shadow-saffron/10",
+    badge: "border-navy/15 bg-cream text-navy",
+    title: "text-navy group-hover:text-saffron",
+    body: "text-ink/80",
+  },
+  {
+    bg: "bg-navy border-transparent shadow-md",
+    hover: "hover:-translate-y-2 hover:bg-[#0F1B33] hover:shadow-xl hover:shadow-navy/20",
+    badge: "border-white/20 bg-[#0F1B33] text-cream",
+    title: "text-cream group-hover:text-[#FFB266]",
+    body: "text-cream/80",
+  },
+  {
+    bg: "bg-saffron/10 border-saffron/20 shadow-sm",
+    hover: "hover:-translate-y-2 hover:border-saffron/50 hover:bg-saffron/15 hover:shadow-xl hover:shadow-saffron/10",
+    badge: "border-saffron/30 bg-white text-[#B85608]",
+    title: "text-navy group-hover:text-[#B85608]",
+    body: "text-ink/80",
+  }
+];
+
 export function HowItWorks() {
-  const pathRef = useRef<SVGPathElement>(null);
-
-  useEffect(() => {
-    let cleanup = () => {};
-    let cancelled = false;
-    const reduced =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) return;
-
-    (async () => {
-      const { default: gsap } = await import("gsap");
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      if (cancelled || !pathRef.current) return;
-      gsap.registerPlugin(ScrollTrigger);
-      const length = pathRef.current.getTotalLength();
-      gsap.set(pathRef.current, { strokeDasharray: length, strokeDashoffset: length });
-      const tween = gsap.to(pathRef.current, {
-        strokeDashoffset: 0,
-        ease: "none",
-        scrollTrigger: {
-          trigger: pathRef.current,
-          start: "top 80%",
-          end: "bottom 50%",
-          scrub: 0.6,
-        },
-      });
-      cleanup = () => {
-        tween.scrollTrigger?.kill();
-        tween.kill();
-      };
-    })();
-
-    return () => {
-      cancelled = true;
-      cleanup();
-    };
-  }, []);
-
   return (
     <section className="relative bg-cream py-24 md:py-32">
       <div className="mx-auto max-w-7xl px-6">
@@ -56,41 +41,45 @@ export function HowItWorks() {
           </h2>
         </div>
 
-        <div className="relative mt-20 grid gap-14 md:grid-cols-3 md:gap-8">
-          <svg
-            viewBox="0 0 1000 80"
-            preserveAspectRatio="none"
-            className="pointer-events-none absolute left-0 right-0 top-[68px] hidden h-20 w-full md:block"
-            aria-hidden
-          >
-            <path
-              ref={pathRef}
-              d="M120 40 C 300 -10, 460 90, 660 30 C 800 -10, 880 60, 920 40"
-              fill="none"
-              stroke="#F4700B"
-              strokeWidth="2.5"
-              strokeDasharray="2 8"
-              strokeLinecap="round"
-            />
-          </svg>
-
+        <div className="mt-20 flex flex-col md:flex-row items-center justify-center gap-4 lg:gap-6">
           {howSteps.map((s, i) => {
             const Ill = icons[i];
+            const style = cardStyles[i];
+            
             return (
-              <article key={s.n} className="relative text-center">
-                <div className="mx-auto h-32 w-32">
-                  <Ill />
-                </div>
-                <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-navy/15 bg-cream px-3 py-1 font-display text-xs font-bold tracking-[0.18em] text-navy">
-                  STEP {s.n}
-                </div>
-                <h3 className="mt-4 font-display text-2xl font-black text-navy">
-                  {s.title}
-                </h3>
-                <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-ink">
-                  {s.body}
-                </p>
-              </article>
+              <div key={s.n} className="flex flex-col md:flex-row items-center w-full md:w-auto">
+                {/* Card */}
+                <article
+                  className={`group relative flex flex-col items-center text-center p-8 lg:p-10 rounded-3xl border transition-all duration-500 w-full max-w-sm md:w-[300px] lg:w-[340px] h-[380px] ${style.bg} ${style.hover}`}
+                >
+                  <div className="mx-auto h-24 w-24 sm:h-28 sm:w-28 mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3">
+                    <Ill />
+                  </div>
+                  <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-display text-[10px] font-bold tracking-[0.18em] shadow-sm ${style.badge}`}>
+                    STEP {s.n}
+                  </div>
+                  <h3 className={`mt-5 font-display text-2xl font-black transition-colors duration-300 ${style.title}`}>
+                    {s.title}
+                  </h3>
+                  <p className={`mx-auto mt-3 max-w-[280px] text-sm leading-relaxed ${style.body}`}>
+                    {s.body}
+                  </p>
+                </article>
+
+                {/* Desktop Arrow */}
+                {i < howSteps.length - 1 && (
+                  <div className="hidden md:flex mx-2 lg:mx-4 xl:mx-8 text-navy/20 transition-all duration-300 hover:text-saffron">
+                    <ArrowRight size={40} strokeWidth={1.5} className="transition-transform duration-500 hover:translate-x-3 hover:scale-110" />
+                  </div>
+                )}
+                
+                {/* Mobile Arrow */}
+                {i < howSteps.length - 1 && (
+                  <div className="md:hidden my-6 text-navy/20 transition-colors hover:text-saffron">
+                    <ArrowRight size={32} strokeWidth={1.5} className="rotate-90 transition-transform duration-500 hover:translate-y-2 hover:scale-110" />
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>

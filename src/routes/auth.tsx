@@ -2,7 +2,8 @@ import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-r
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, BookOpen, Target, MessageCircle, Trophy, LineChart, Video } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 
 const searchSchema = z.object({
@@ -21,11 +22,20 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+const showcaseFeatures = [
+  { icon: BookOpen, title: "Concept-First Learning", desc: "Understand deeply instead of memorizing." },
+  { icon: Target, title: "Personal Learning Plans", desc: "Weekly roadmaps tailored to every student." },
+  { icon: MessageCircle, title: "Live Doubt Solving", desc: "Get unstuck instantly with expert mentors." },
+  { icon: Trophy, title: "Scholarship Opportunities", desc: "Compete in VSAT and earn rewards." },
+  { icon: LineChart, title: "Parent Progress Reports", desc: "Transparent performance tracking." },
+  { icon: Video, title: "Interactive Live Classes", desc: "Engaging sessions with expert teachers." },
+];
+
 function AuthPage() {
   const { mode = "signin", redirect = "/dashboard" } = useSearch({ from: "/auth" });
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"signin" | "signup">(mode);
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, signUp, signInWithGoogle } = useAuth();
 
   // Form State
   const [email, setEmail] = useState("");
@@ -36,6 +46,18 @@ function AuthPage() {
   const [classLevel, setClassLevel] = useState("");
   
   const [loading, setLoading] = useState(false);
+  
+  // Showcase State
+  const [currentFeature, setCurrentFeature] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (isHovered) return;
+    const interval = setInterval(() => {
+      setCurrentFeature((prev) => (prev + 1) % showcaseFeatures.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isHovered]);
 
   useEffect(() => {
     if (user) {
@@ -89,84 +111,86 @@ function AuthPage() {
     }
   }
 
+  async function handleGoogleSignIn() {
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+      toast.success("Successfully authenticated with Google");
+    } catch (err: any) {
+      if (err.code !== "auth/popup-closed-by-user") {
+        toast.error(err.message || "Failed to authenticate with Google");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-cream grain pt-20 lg:pt-[88px]">
+    <div className="h-dvh overflow-hidden flex flex-col md:flex-row bg-cream grain">
       {/* Left Side: Branding / Promo (Hidden on mobile, shown on md and up) */}
-      <div className="hidden md:flex md:w-[45%] lg:w-[40%] bg-navy flex-col justify-between p-10 lg:p-16 relative overflow-hidden text-cream border-r border-navy/20">
+      <div className="hidden md:flex md:w-1/2 bg-navy flex-col justify-between p-10 lg:p-16 relative overflow-hidden text-cream border-r border-navy/20">
         {/* Background illustration/image */}
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1000&auto=format&fit=crop')] bg-cover bg-center opacity-10 mix-blend-overlay"></div>
-        <div className="absolute -left-20 top-20 w-80 h-80 bg-saffron/20 rounded-full blur-[80px]"></div>
+        <div className="absolute -left-20 top-20 w-80 h-80 bg-saffron/15 rounded-full blur-[100px]"></div>
         
         <div className="relative z-10">
           <Link to="/" className="text-xl font-black font-display tracking-wide text-cream flex items-center gap-3">
             <span className="w-9 h-9 rounded bg-saffron flex items-center justify-center text-navy shadow-lg">V</span>
             Vidyapeeth
           </Link>
+        </div>
 
-          <div className="mt-20 lg:mt-28">
-            <h2 className="font-display text-4xl lg:text-5xl font-black leading-[1.1]">
-              Learn Smarter.<br />
-              <span className="text-saffron">Grow Faster.</span>
-            </h2>
-            <p className="mt-5 text-cream/80 text-base max-w-md leading-relaxed">
-              Join India's most effective learning platform designed to help you achieve your academic dreams without the stress.
-            </p>
-
-            <div className="mt-12 space-y-7">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-cream/10 flex items-center justify-center text-saffron shrink-0 shadow-inner">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                </div>
-                <div>
-                  <h4 className="font-bold text-cream text-sm">Top Curriculum</h4>
-                  <p className="text-xs text-cream/70 mt-0.5">NCERT aligned, concept-first approach.</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-cream/10 flex items-center justify-center text-saffron shrink-0 shadow-inner">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                </div>
-                <div>
-                  <h4 className="font-bold text-cream text-sm">Doubt Solving</h4>
-                  <p className="text-xs text-cream/70 mt-0.5">Live 1-on-1 problem solving rooms.</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-cream/10 flex items-center justify-center text-saffron shrink-0 shadow-inner">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
-                <div>
-                  <h4 className="font-bold text-cream text-sm">Proven Results</h4>
-                  <p className="text-xs text-cream/70 mt-0.5">Consistent top rankers every year.</p>
-                </div>
-              </div>
-            </div>
+        <div className="relative z-10 flex-1 flex flex-col justify-end pb-8 pt-16">
+          <div 
+            className="relative min-h-[200px] w-full max-w-lg"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
+            <AnimatePresence mode="wait">
+              {showcaseFeatures.map((feature, idx) => (
+                idx === currentFeature && (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="absolute inset-0 flex items-start"
+                  >
+                    <div className="relative flex-1">
+                      <h4 className="relative z-10 font-black font-display text-3xl lg:text-4xl text-cream tracking-wide leading-tight">
+                        {feature.title}
+                      </h4>
+                      <p className="relative z-10 text-lg lg:text-xl text-cream/70 mt-4 font-medium leading-relaxed italic">
+                        — {feature.desc}
+                      </p>
+                    </div>
+                  </motion.div>
+                )
+              ))}
+            </AnimatePresence>
           </div>
         </div>
 
-        <div className="relative z-10 border-t border-cream/10 pt-8 mt-12">
-          <div className="flex items-center gap-8">
-            <div>
-              <p className="font-display font-black text-2xl text-cream">50k+</p>
-              <p className="text-[10px] text-cream/60 uppercase tracking-widest font-bold mt-1">Students</p>
-            </div>
-            <div>
-              <p className="font-display font-black text-2xl text-cream">100+</p>
-              <p className="text-[10px] text-cream/60 uppercase tracking-widest font-bold mt-1">Courses</p>
-            </div>
-            <div>
-              <p className="font-display font-black text-2xl text-cream">95%</p>
-              <p className="text-[10px] text-cream/60 uppercase tracking-widest font-bold mt-1">Success</p>
-            </div>
+        <div className="relative z-10 border-t border-cream/10 pt-8 mt-auto flex items-center gap-8 opacity-80">
+          <div>
+            <p className="font-display font-black text-xl text-cream">50K+</p>
+            <p className="text-[10px] text-cream/60 uppercase tracking-widest font-bold mt-1">Students</p>
+          </div>
+          <div>
+            <p className="font-display font-black text-xl text-cream">100+</p>
+            <p className="text-[10px] text-cream/60 uppercase tracking-widest font-bold mt-1">Courses</p>
+          </div>
+          <div>
+            <p className="font-display font-black text-xl text-cream">95%</p>
+            <p className="text-[10px] text-cream/60 uppercase tracking-widest font-bold mt-1">Success</p>
           </div>
         </div>
       </div>
 
       {/* Right Side: Auth Form */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-10 lg:p-16">
-        <div className="w-full max-w-md">
+      <div className="w-full md:w-1/2 h-full flex flex-col items-center justify-center p-6 md:p-10 lg:p-16 overflow-y-auto">
+        <div className="w-full max-w-md my-auto py-8">
           {/* Mobile Logo */}
           <Link to="/" className="md:hidden text-xs font-semibold uppercase tracking-[0.22em] text-saffron flex justify-center mb-8">
             Vidyapeeth
@@ -183,8 +207,29 @@ function AuthPage() {
             </p>
           </div>
 
-          <div className="mt-8 rounded-3xl border border-navy/10 bg-card shadow-[0_30px_60px_-30px_rgba(27,42,74,0.15)] overflow-hidden">
-            <form onSubmit={onSubmit} className="p-7 md:p-8 space-y-4">
+          <div className="mt-6 rounded-3xl border border-navy/10 bg-card shadow-[0_30px_60px_-30px_rgba(27,42,74,0.15)] overflow-hidden">
+            <div className="p-6 md:px-8 md:pt-8 pb-0">
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-navy/15 bg-white px-7 py-3.5 text-sm font-semibold text-navy transition-all hover:bg-navy/5 disabled:opacity-60 shadow-sm"
+              >
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleIcon />}
+                Continue with Google
+              </button>
+
+              <div className="relative mt-6 mb-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-navy/10"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase tracking-wider">
+                  <span className="bg-card px-3 font-bold text-navy/40">Or continue with email</span>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={onSubmit} className="p-6 md:px-8 md:pb-8 pt-4 space-y-4">
               {activeTab === "signup" && (
                 <>
                   <Field label="Full Name">
@@ -316,5 +361,29 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-1.5 block font-medium text-navy/80">{label}</span>
       {children}
     </label>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg className="w-5 h-5 mr-1" viewBox="0 0 24 24">
+      <path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        fill="#EA4335"
+      />
+      <path d="M1 1h22v22H1z" fill="none" />
+    </svg>
   );
 }

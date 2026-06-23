@@ -1,7 +1,7 @@
 import { Award } from "lucide-react";
 
 const achievements = [
-  { name: "Devansh P.", class: "9", achievement: "Sainik School Selected", category: "Entrance Exam", year: "2025" },
+  { name: "Devansh P.", class: "9", achievement: "Sainik School Selected", category: "Entrance Exam", year: "2025", },
   { name: "Sara K.", class: "8", achievement: "Olympiad Gold Medal", category: "Competition", year: "2025" },
   { name: "Ananya G.", class: "10", achievement: "NTSE Stage 2 Cleared", category: "Scholarship", year: "2025" },
   { name: "Rohan M.", class: "10", achievement: "98% in CBSE Boards", category: "Board Exams", year: "2025" },
@@ -48,7 +48,7 @@ export function SuccessMarquee() {
           Student Achievements
         </h2>
       </div>
-      
+
       {/* 
         We use group on the wrapper so that hovering anywhere on the carousel 
         pauses the animation for both duplicated lists.
@@ -60,7 +60,7 @@ export function SuccessMarquee() {
           ))}
         </div>
       </div>
-      
+
       {/* Soft gradient masks on edges for fade effect */}
       <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-cream to-transparent md:w-32 z-10" />
       <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-cream to-transparent md:w-32 z-10" />

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo, useState, useRef } from "react";
+import { ArrowUpRight } from "lucide-react";
+import { useMemo, useState } from "react";
 import { courses } from "@/data/home";
 import { ScrollReveal } from "@/components/shared/ScrollReveal";
 
@@ -10,26 +10,11 @@ type Tab = (typeof TABS)[number];
 
 export function CourseShowcase() {
   const [tab, setTab] = useState<Tab>("All");
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(
     () => (tab === "All" ? courses : courses.filter((c) => c.classLevel === tab)),
     [tab],
   );
-
-  const scrollLeft = () => {
-    if (scrollContainerRef.current) {
-      const cardWidth = scrollContainerRef.current.clientWidth / 3;
-      scrollContainerRef.current.scrollBy({ left: -cardWidth * 2, behavior: "smooth" });
-    }
-  };
-
-  const scrollRight = () => {
-    if (scrollContainerRef.current) {
-      const cardWidth = scrollContainerRef.current.clientWidth / 3;
-      scrollContainerRef.current.scrollBy({ left: cardWidth * 2, behavior: "smooth" });
-    }
-  };
 
   return (
     <section id="our-courses" className="grain relative scroll-mt-24 bg-cream py-20 md:py-28 lg:py-32">
@@ -83,45 +68,27 @@ export function CourseShowcase() {
           })}
         </div>
 
-        {/* Professional Carousel/Slider layout */}
-        <div className="relative mt-8 lg:mt-12 group/slider -mx-5 sm:mx-0">
-          <div
-            ref={scrollContainerRef}
-            className="flex gap-5 overflow-x-auto snap-x snap-mandatory hide-scrollbar px-5 sm:px-0 pb-8 pt-4 items-stretch"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        {/* Grid layout */}
+        <div className="mt-8 lg:mt-12">
+          <motion.div 
+            layout
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
           >
             <AnimatePresence mode="popLayout">
               {filtered.map((c, i) => (
                 <ScrollReveal 
                   key={c.slug} 
                   delay={Math.min(i * 0.05, 0.25)} 
-                  className="w-[85vw] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)] shrink-0 snap-start flex"
+                  className="flex h-full"
                 >
                   <CourseCard course={c} />
                 </ScrollReveal>
               ))}
             </AnimatePresence>
-          </div>
-          
-          {/* Navigation Arrows (visible on desktop hover) */}
-          <button
-            onClick={scrollLeft}
-            className="hidden lg:flex absolute left-[-24px] top-[calc(50%-24px)] z-10 h-12 w-12 items-center justify-center rounded-full bg-cream shadow-xl border border-navy/10 text-navy hover:bg-navy hover:text-cream transition-all duration-300 opacity-0 group-hover/slider:opacity-100 hover:scale-110"
-            aria-label="Previous courses"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          
-          <button
-            onClick={scrollRight}
-            className="hidden lg:flex absolute right-[-24px] top-[calc(50%-24px)] z-10 h-12 w-12 items-center justify-center rounded-full bg-cream shadow-xl border border-navy/10 text-navy hover:bg-navy hover:text-cream transition-all duration-300 opacity-0 group-hover/slider:opacity-100 hover:scale-110"
-            aria-label="Next courses"
-          >
-            <ChevronRight size={24} />
-          </button>
+          </motion.div>
         </div>
 
-        <div className="mt-8 flex justify-center lg:hidden">
+        <div className="mt-10 flex justify-center lg:hidden">
           <Link
             to="/courses"
             className="group inline-flex items-center gap-2 rounded-full border border-navy/20 px-5 py-2.5 text-sm font-semibold text-navy hover:border-navy hover:bg-navy hover:text-cream"

@@ -173,10 +173,12 @@ function RootComponent() {
 function SiteShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdminRoute = pathname.startsWith("/admin");
+  const isAuthRoute = pathname.startsWith("/auth");
+  const hideChrome = isAdminRoute || isAuthRoute;
 
   return (
     <>
-      {!isAdminRoute && (
+      {!hideChrome && (
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-navy focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-cream"
@@ -184,10 +186,10 @@ function SiteShell({ children }: { children: ReactNode }) {
           Skip to main content
         </a>
       )}
-      {!isAdminRoute && <Navbar />}
-      <main id="main-content" className="min-h-dvh">{children}</main>
-      {!isAdminRoute && <Footer />}
-      {!isAdminRoute && <WhatsAppFloat />}
+      {!hideChrome && <Navbar />}
+      <main id="main-content" className={hideChrome ? "" : "min-h-dvh"}>{children}</main>
+      {!hideChrome && <Footer />}
+      {!hideChrome && <WhatsAppFloat />}
       <CustomCursor />
       <Toaster />
     </>

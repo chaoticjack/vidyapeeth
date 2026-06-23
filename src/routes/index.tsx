@@ -45,7 +45,7 @@ function Index() {
       <HeroSection />
       <StatsBar />
       <CourseShowcase />
-      <div className="bg-cream"><WaveDivider fill="#1B2A4A" /></div>
+      <div className="bg-cream grain"><WaveDivider fill="#1B2A4A" /></div>
       <VSATBlock />
       <div className="bg-navy"><WaveDivider fill="#FFF8F0" flip /></div>
       <DemoBookingSection />

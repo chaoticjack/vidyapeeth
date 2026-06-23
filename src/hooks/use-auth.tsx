@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
@@ -12,6 +12,8 @@ export interface UserProfile {
   createdAt?: string;
   rewardPoints?: number;
   isAdmin?: boolean;
+  photoURL?: string;
+  authProvider?: string;
 }
 
 interface AuthContextType {
@@ -19,6 +21,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<void>;
   signUp: (email: string, pass: string, data: Omit<UserProfile, "id" | "email">) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   changePassword: (currentPass: string, newPass: string) => Promise<void>;
 }
@@ -151,6 +154,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    const firebaseUser = result.user;
+
+    const docRef = doc(db, "users", firebaseUser.uid);
+    const docSnap = await getDoc(docRef).catch(() => null);
+
+    if (!docSnap || !docSnap.exists()) {
+      // Create user document for new Google sign-ins
+      const userDoc = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || "",
+        fullName: firebaseUser.displayName || "",
+        photoURL: firebaseUser.photoURL || "",
+        authProvider: "google",
+        classLevel: "6", // Default class level
+        phone: firebaseUser.phoneNumber || "",
+        createdAt: new Date().toISOString(),
+        rewardPoints: 0,
+      };
+      await setDoc(docRef, userDoc).catch(console.error);
+    }
+  };
+
   const signOut = async () => {
     await firebaseSignOut(auth);
   };
@@ -165,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, changePassword }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signInWithGoogle, signOut, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

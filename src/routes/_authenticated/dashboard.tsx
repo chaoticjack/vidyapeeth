@@ -3,8 +3,7 @@ import { useState } from "react";
 import { BookOpen, Sparkles, CalendarCheck2, PlayCircle, Trophy, Bell, Clock, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useDashboardData } from "@/hooks/use-dashboard-data";
-import { doc, setDoc, addDoc, collection, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -20,124 +19,6 @@ function DashboardPage() {
 
   if (!user) return null; // Route guard handles redirect
 
-  async function seedDatabase() {
-    if (!user) return;
-    toast.loading("Setting up demo data...", { id: "seed" });
-    try {
-      // 1. Create a course
-      const courseRef = doc(collection(db, "courses"));
-      await setDoc(courseRef, {
-        title: "Mathematics Foundation",
-        description: "Core math concepts for Class 6",
-        classLevel: "6",
-        subject: "Mathematics",
-        totalLessons: 20,
-        upcomingLiveClass: {
-          title: "Mastering Trigonometry",
-          date: "Today",
-          time: "5:00 PM - 6:00 PM"
-        }
-      });
-      
-      const course2Ref = doc(collection(db, "courses"));
-      await setDoc(course2Ref, {
-        title: "Science Explorer",
-        description: "Fun science experiments",
-        classLevel: "6",
-        subject: "Science",
-        totalLessons: 15,
-      });
-
-      // 2. Create enrollments
-      await addDoc(collection(db, "enrollments"), {
-        userId: user.id,
-        courseId: courseRef.id,
-        enrolledAt: new Date().toISOString(),
-        status: "active"
-      });
-      await addDoc(collection(db, "enrollments"), {
-        userId: user.id,
-        courseId: course2Ref.id,
-        enrolledAt: new Date().toISOString(),
-        status: "active"
-      });
-
-      // 3. Create progress
-      await addDoc(collection(db, "progress"), {
-        userId: user.id,
-        courseId: courseRef.id,
-        percentage: 65,
-        nextLessonTitle: "Algebraic Expressions",
-        nextLessonDuration: "45 mins",
-        lastAccessed: new Date().toISOString()
-      });
-      await addDoc(collection(db, "progress"), {
-        userId: user.id,
-        courseId: course2Ref.id,
-        percentage: 30,
-        nextLessonTitle: "Laws of Motion",
-        nextLessonDuration: "60 mins",
-        lastAccessed: new Date().toISOString()
-      });
-
-      // 4. Create activities
-      await addDoc(collection(db, "activities"), {
-        userId: user.id,
-        text: "Completed chapter: Fractions & Decimals",
-        time: "2 hours ago",
-        timestamp: new Date().toISOString(),
-        type: "completion"
-      });
-      await addDoc(collection(db, "activities"), {
-        userId: user.id,
-        text: "Scored 92% in Weekly Math Quiz",
-        time: "Yesterday",
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-        type: "quiz"
-      });
-      await addDoc(collection(db, "activities"), {
-        userId: user.id,
-        text: "Attended Live Doubt Clearing Session",
-        time: "2 days ago",
-        timestamp: new Date(Date.now() - 172800000).toISOString(),
-        type: "class"
-      });
-
-      // 5. Create blogs
-      await addDoc(collection(db, "blogs"), {
-        title: "How to Ace Your Math Exam",
-        content: "Here are 5 tips to master mathematics...",
-        author: "Admin",
-        publishedAt: new Date().toISOString()
-      });
-
-      // 6. Create demo bookings
-      await addDoc(collection(db, "demoBookings"), {
-        userId: user.id,
-        studentName: user.fullName,
-        date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
-        time: "4:00 PM",
-        status: "scheduled"
-      });
-
-      // 7. Create VSAT registration
-      await addDoc(collection(db, "vsatRegistrations"), {
-        userId: user.id,
-        examDate: new Date(Date.now() + 604800000).toISOString().split('T')[0], // Next week
-        status: "registered"
-      });
-
-      // 8. Update user points
-      await updateDoc(doc(db, "users", user.id), {
-        rewardPoints: 1250
-      });
-
-      toast.success("Demo data created successfully!", { id: "seed" });
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Failed to seed database: " + err.message, { id: "seed" });
-    }
-  }
 
   return (
     <section className="grain bg-cream pt-32 pb-24 md:pt-36">
@@ -154,14 +35,7 @@ function DashboardPage() {
               Class {user.classLevel} • {user.email}
             </p>
           </div>
-          <div>
-            <button 
-              onClick={seedDatabase}
-              className="rounded-full bg-saffron px-5 py-2.5 text-sm font-bold text-white shadow-md hover:bg-[#d65f08] transition-colors"
-            >
-              Setup Demo Data
-            </button>
-          </div>
+
         </div>
 
         {/* Top Stats */}

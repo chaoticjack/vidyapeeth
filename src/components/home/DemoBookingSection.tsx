@@ -101,7 +101,7 @@ export function DemoBookingSection() {
       </div>
       {/* Soft white overlay for readability (washes out the image) */}
       <div
-        className="absolute inset-0 z-[1] bg-cream/85 backdrop-blur-[2px]"
+        className="absolute inset-0 z-[1] bg-gradient-to-b from-cream via-cream/90 to-cream/85 backdrop-blur-[2px]"
         aria-hidden="true"
       />
       <div className="relative z-[3] mx-auto max-w-7xl px-6">
