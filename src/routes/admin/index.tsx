@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { 
   Users, 
   BookOpen, 
@@ -18,6 +19,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { collection, getCountFromServer, query, where, getDocs, limit, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { StatsCard } from "@/components/admin/StatsCard";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({ meta: [{ title: "Admin Dashboard — Vidyapeeth" }] }),
@@ -40,14 +44,46 @@ const mockCourseData = [
   { name: "Eng 10", enrollments: 400 },
 ];
 
-const recentRegistrations = [
-  { id: 1, name: "Aanya Sharma", class: "Class 10", date: "Just now", status: "Active" },
-  { id: 2, name: "Rahul Verma", class: "Class 9", date: "2 hours ago", status: "Active" },
-  { id: 3, name: "Priya Singh", class: "Class 10", date: "5 hours ago", status: "Pending" },
-  { id: 4, name: "Kabir Das", class: "Class 8", date: "Yesterday", status: "Active" },
-];
-
 function AdminDashboard() {
+  const [stats, setStats] = useState({
+    students: 0,
+    courses: 0,
+    teachers: 0,
+    demoRequests: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [recentDemos, setRecentDemos] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        // Fetch aggregates
+        const studentsSnap = await getCountFromServer(collection(db, "users"));
+        const approvedDemosSnap = await getCountFromServer(query(collection(db, "demoRegistrations"), where("status", "==", "approved")));
+        const coursesSnap = await getCountFromServer(collection(db, "courses"));
+        const teachersSnap = await getCountFromServer(collection(db, "teachers"));
+        const demosSnap = await getCountFromServer(query(collection(db, "demoRegistrations"), where("status", "==", "pending")));
+
+        setStats({
+          students: studentsSnap.data().count + approvedDemosSnap.data().count,
+          courses: coursesSnap.data().count,
+          teachers: teachersSnap.data().count,
+          demoRequests: demosSnap.data().count,
+        });
+
+        // Fetch recent demo requests
+        const demosQuery = query(collection(db, "demoRegistrations"), orderBy("createdAt", "desc"), limit(5));
+        const demosList = await getDocs(demosQuery);
+        setRecentDemos(demosList.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (err) {
+        console.error("Failed to load dashboard data", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDashboardData();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -59,10 +95,10 @@ function AdminDashboard() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard icon={<Users />} title="Total Students" value="3,400" trend="+12% this month" />
-        <SummaryCard icon={<BookOpen />} title="Active Courses" value="24" trend="+3 new" />
-        <SummaryCard icon={<GraduationCap />} title="Total Teachers" value="142" trend="+5 this month" />
-        <SummaryCard icon={<CalendarCheck2 />} title="Demo Requests" value="85" trend="12 pending" highlight />
+        <StatsCard loading={loading} icon={<Users />} title="Total Students" value={stats.students} trend={{ value: 12, isPositive: true }} />
+        <StatsCard loading={loading} icon={<BookOpen />} title="Active Courses" value={stats.courses} trend={{ value: 3, isPositive: true }} />
+        <StatsCard loading={loading} icon={<GraduationCap />} title="Total Teachers" value={stats.teachers} trend={{ value: 5, isPositive: true }} />
+        <StatsCard loading={loading} icon={<CalendarCheck2 />} title="Pending Demos" value={stats.demoRequests} />
       </div>
 
       {/* Charts Row */}
@@ -104,8 +140,7 @@ function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-            <h2 className="text-lg font-bold text-navy font-display">Recent Registrations</h2>
-            <button className="text-sm font-semibold text-saffron hover:underline">View all</button>
+            <h2 className="text-lg font-bold text-navy font-display">Recent Demos</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -113,21 +148,27 @@ function AdminDashboard() {
                 <tr>
                   <th className="px-6 py-3 font-medium">Name</th>
                   <th className="px-6 py-3 font-medium">Class</th>
-                  <th className="px-6 py-3 font-medium">Date</th>
                   <th className="px-6 py-3 font-medium">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {recentRegistrations.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-semibold text-navy">{user.name}</td>
-                    <td className="px-6 py-4 text-gray-600">{user.class}</td>
-                    <td className="px-6 py-4 text-gray-500">{user.date}</td>
+                {recentDemos.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                      {loading ? "Loading..." : "No recent demos"}
+                    </td>
+                  </tr>
+                )}
+                {recentDemos.map((demo) => (
+                  <tr key={demo.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 font-semibold text-navy">{demo.studentName || demo.name || "Unknown"}</td>
+                    <td className="px-6 py-4 text-gray-600">{demo.classLevel || demo.class}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2 py-1 rounded-md text-xs font-semibold ${
-                        user.status === "Active" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                        demo.status === "approved" ? "bg-green-100 text-green-700" : 
+                        demo.status === "rejected" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"
                       }`}>
-                        {user.status}
+                        {demo.status || "pending"}
                       </span>
                     </td>
                   </tr>
@@ -148,23 +189,6 @@ function AdminDashboard() {
             <ActivityItem icon={<CalendarCheck2 size={16} />} title="Demo Class Completed" time="Yesterday" desc="Rahul's science demo marked as successful." />
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function SummaryCard({ icon, title, value, trend, highlight }: any) {
-  return (
-    <div className={`rounded-2xl border p-5 shadow-sm transition-transform hover:-translate-y-1 ${highlight ? 'bg-saffron border-saffron text-white' : 'bg-white border-gray-200'}`}>
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-2 rounded-lg ${highlight ? 'bg-white/20' : 'bg-navy/5 text-navy'}`}>
-          {icon}
-        </div>
-      </div>
-      <div>
-        <p className={`text-sm font-medium ${highlight ? 'text-white/80' : 'text-gray-500'}`}>{title}</p>
-        <h3 className={`text-3xl font-black mt-1 font-display ${highlight ? 'text-white' : 'text-navy'}`}>{value}</h3>
-        <p className={`text-xs mt-2 font-medium ${highlight ? 'text-white/90' : 'text-green-600'}`}>{trend}</p>
       </div>
     </div>
   );

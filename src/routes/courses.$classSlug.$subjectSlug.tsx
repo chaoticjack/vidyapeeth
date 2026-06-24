@@ -181,9 +181,13 @@ function SubjectDetailsPage() {
                     <span className="text-sm font-semibold text-ink/40 line-through">{course.original}</span>
                   </div>
                   <div className="space-y-3">
-                    <button className="w-full rounded-full bg-navy py-3.5 text-sm font-bold text-cream transition-transform hover:-translate-y-1 hover:bg-saffron">
+                    <Link
+                      to="/enroll/$courseId"
+                      params={{ courseId: course.slug! }}
+                      className="inline-flex justify-center w-full rounded-full bg-navy py-3.5 text-sm font-bold text-cream transition-transform hover:-translate-y-1 hover:bg-saffron"
+                    >
                       Enroll Now
-                    </button>
+                    </Link>
                     <Link to="/demo-class" className="flex w-full justify-center rounded-full border-2 border-navy/10 py-3 text-sm font-bold text-navy transition-colors hover:bg-navy/5">
                       Book Free Demo
                     </Link>

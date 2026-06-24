@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const schema = z.object({
   studentName: z.string().min(2, "Add a name"),
@@ -131,21 +133,24 @@ function DemoClassPage() {
   }, []);
 
   const onSubmit = async (data: Form) => {
-    // Simulate network delay for Firebase preparation
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // MOCK SUBMISSION
-    const mockBookingId = `demo_${Math.random().toString(36).slice(2, 9)}`;
-    const mockAuthed = false; // Will be replaced by Firebase Auth
+    try {
+      const docRef = await addDoc(collection(db, "demoRegistrations"), {
+        ...data,
+        createdAt: serverTimestamp(),
+      });
 
-    toast.success("Demo booked. We'll WhatsApp you within 4 hours.");
-    setConfirmation({
-      studentName: data.studentName,
-      classLevel: data.classLevel,
-      bookingId: mockBookingId,
-      authed: mockAuthed,
-    });
-    reset();
+      toast.success("Demo booked. We'll WhatsApp you within 4 hours.");
+      setConfirmation({
+        studentName: data.studentName,
+        classLevel: data.classLevel,
+        bookingId: docRef.id,
+        authed: false,
+      });
+      reset();
+    } catch (err) {
+      console.error("Error booking demo:", err);
+      toast.error("Failed to book demo. Please try again later.");
+    }
   };
 
   function goToProgress() {

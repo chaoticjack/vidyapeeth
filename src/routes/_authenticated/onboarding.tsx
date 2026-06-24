@@ -2,6 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({ meta: [{ title: "Get started — Vidyapeeth" }] }),
@@ -20,26 +23,24 @@ function OnboardingPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Firebase auth will populate this later
-    const storedUser = localStorage.getItem("mock_user");
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        if (user.fullName) setFullName(user.fullName);
-      } catch (e) {
-        // ignore
-      }
-    }
-  }, []);
+    if (user?.fullName) setFullName(user.fullName);
+  }, [user]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!user) return;
     setLoading(true);
     try {
-      // Simulate network delay for Firebase preparation
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await setDoc(doc(db, "users", user.id), {
+        role,
+        classLevel,
+        fullName,
+        phone,
+        onboarded: true
+      }, { merge: true });
 
       toast.success("You're all set.");
       navigate({ to: "/dashboard" });

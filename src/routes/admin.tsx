@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   ShieldAlert,
-  Loader2
+  Loader2,
+  BadgeCheck
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,6 +30,7 @@ const adminLinks = [
   { to: "/admin/students", icon: <Users size={18} />, label: "Students" },
   { to: "/admin/teachers", icon: <GraduationCap size={18} />, label: "Teachers" },
   { to: "/admin/courses", icon: <BookOpen size={18} />, label: "Courses" },
+  { to: "/admin/enrollments", icon: <BadgeCheck size={18} />, label: "Enrollments" },
   { to: "/admin/demo-requests", icon: <CalendarCheck2 size={18} />, label: "Demo Requests" },
   { to: "/admin/blogs", icon: <FileText size={18} />, label: "Blog Management" },
   { to: "/admin/analytics", icon: <BarChart3 size={18} />, label: "Reports & Analytics" },

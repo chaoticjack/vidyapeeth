@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowUpRight, Trophy, Sparkles, BookOpen, Target, Clock, GraduationCap, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { COURSES_DATA, type CourseData } from "@/data/courses";
+import { fetchPublishedCourses } from "@/lib/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScrollReveal } from "@/components/shared/ScrollReveal";
 
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/courses/")({
 function CoursesPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const classes = Object.values(COURSES_DATA);
+  const courses = Object.values(COURSES_DATA);
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
@@ -99,42 +100,48 @@ function CoursesPage() {
             </span>
           </div>
 
-          <div className="relative group/slider -mx-5 sm:mx-0">
-            <div
-              ref={scrollContainerRef}
-              className="flex gap-5 overflow-x-auto snap-x snap-mandatory hide-scrollbar px-5 sm:px-0 pb-8 pt-4 items-stretch"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              <AnimatePresence mode="popLayout">
-                {classes.map((c, i) => (
-                  <ScrollReveal 
-                    key={c.slug} 
-                    delay={Math.min(i * 0.05, 0.25)} 
-                    className="w-[85vw] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)] shrink-0 snap-start flex"
-                  >
-                    <CourseCard course={c} />
-                  </ScrollReveal>
-                ))}
-              </AnimatePresence>
-            </div>
-            
-            {/* Navigation Arrows */}
-            <button
-              onClick={scrollLeft}
-              className="hidden lg:flex absolute left-[-24px] top-[calc(50%-24px)] z-10 h-12 w-12 items-center justify-center rounded-full bg-cream shadow-xl border border-navy/10 text-navy hover:bg-navy hover:text-cream transition-all duration-300 opacity-0 group-hover/slider:opacity-100 hover:scale-110"
-              aria-label="Previous courses"
-            >
-              <ChevronLeft size={24} />
-            </button>
-            
-            <button
-              onClick={scrollRight}
-              className="hidden lg:flex absolute right-[-24px] top-[calc(50%-24px)] z-10 h-12 w-12 items-center justify-center rounded-full bg-cream shadow-xl border border-navy/10 text-navy hover:bg-navy hover:text-cream transition-all duration-300 opacity-0 group-hover/slider:opacity-100 hover:scale-110"
-              aria-label="Next courses"
-            >
-              <ChevronRight size={24} />
-            </button>
-          </div>
+            {courses.length === 0 ? (
+              <div className="py-20 text-center text-ink/70">
+                <p>No courses published yet.</p>
+              </div>
+            ) : (
+              <div className="relative group/slider -mx-5 sm:mx-0">
+                <div
+                  ref={scrollContainerRef}
+                  className="flex gap-5 overflow-x-auto snap-x snap-mandatory hide-scrollbar px-5 sm:px-0 pb-8 pt-4 items-stretch"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  <AnimatePresence mode="popLayout">
+                    {courses.map((c, i) => (
+                      <ScrollReveal 
+                        key={c.slug || c.id || c.name} 
+                        delay={Math.min(i * 0.05, 0.25)} 
+                        className="w-[85vw] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)] shrink-0 snap-start flex"
+                      >
+                        <CourseCard course={c} />
+                      </ScrollReveal>
+                    ))}
+                  </AnimatePresence>
+                </div>
+                
+                {/* Navigation Arrows */}
+                <button
+                  onClick={scrollLeft}
+                  className="hidden lg:flex absolute left-[-24px] top-[calc(50%-24px)] z-10 h-12 w-12 items-center justify-center rounded-full bg-cream shadow-xl border border-navy/10 text-navy hover:bg-navy hover:text-cream transition-all duration-300 opacity-0 group-hover/slider:opacity-100 hover:scale-110"
+                  aria-label="Previous courses"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                
+                <button
+                  onClick={scrollRight}
+                  className="hidden lg:flex absolute right-[-24px] top-[calc(50%-24px)] z-10 h-12 w-12 items-center justify-center rounded-full bg-cream shadow-xl border border-navy/10 text-navy hover:bg-navy hover:text-cream transition-all duration-300 opacity-0 group-hover/slider:opacity-100 hover:scale-110"
+                  aria-label="Next courses"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </div>
+            )}
         </div>
       </section>
 
@@ -156,11 +163,11 @@ function CoursesPage() {
           </div>
 
           <div className="space-y-4">
-            {classes.map((c, index) => {
-              const isOpen = expanded === c.slug;
+            {courses.map((c: any, index: number) => {
+              const isOpen = expanded === (c.slug || c.id);
               return (
                 <div
-                  key={c.slug}
+                  key={c.slug || c.id || index}
                   className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
                     isOpen
                       ? "border-saffron/40 bg-card shadow-[0_20px_50px_-20px_rgba(27,42,74,0.20)]"
@@ -169,20 +176,20 @@ function CoursesPage() {
                 >
                   <button
                     type="button"
-                    onClick={() => setExpanded(isOpen ? null : c.slug)}
+                    onClick={() => setExpanded(isOpen ? null : (c.slug || c.id))}
                     className="flex w-full items-center justify-between gap-4 p-6 text-left md:p-7"
                   >
                     <div className="flex items-center gap-4">
                       <span className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-display text-sm font-black text-cream ${
                         index % 2 === 0 ? "bg-navy" : "bg-saffron"
                       }`}>
-                        {c.grade.replace("Class ", "")}
+                        {(c.grade || c.classLevel || "").replace("Class ", "")}
                       </span>
                       <div>
                         <h3 className="font-display text-lg font-bold text-navy md:text-xl">
-                          {c.grade} — {c.title}
+                          {c.grade || `Class ${c.classLevel}`} — {c.title || c.name}
                         </h3>
-                        <p className="mt-0.5 text-sm text-ink/70">{c.subjectsSummary}</p>
+                        <p className="mt-0.5 text-sm text-ink/70">{c.subjectsSummary || c.subject}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -212,7 +219,7 @@ function CoursesPage() {
                             </h4>
                           </div>
                           <ul className="mt-4 space-y-2.5">
-                            {c.keyTopics.map((t) => (
+                            {(c.keyTopics || ["Live interactive classes", "Doubt solving", "Weekly tests"]).map((t: string) => (
                               <li key={t} className="flex items-start gap-2 text-sm text-ink">
                                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-saffron" />
                                 {t}
@@ -232,7 +239,7 @@ function CoursesPage() {
                             </h4>
                           </div>
                           <ul className="mt-4 space-y-2.5">
-                            {c.learningOutcomes.map((o) => (
+                            {(c.learningOutcomes || ["Concept mastery", "Improved grades"]).map((o: string) => (
                               <li key={o} className="flex items-start gap-2 text-sm text-ink">
                                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-navy/40" />
                                 {o}
@@ -254,7 +261,7 @@ function CoursesPage() {
                           <div className="mt-4 space-y-4">
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">Duration</p>
-                              <p className="mt-1 text-sm font-medium text-navy">{c.duration}</p>
+                              <p className="mt-1 text-sm font-medium text-navy">{c.duration || "1 Year"}</p>
                             </div>
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">Level</p>
@@ -263,13 +270,13 @@ function CoursesPage() {
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">Price</p>
                               <p className="mt-1 text-sm text-navy">
-                                <span className="font-display text-lg font-black">{c.price}</span>
-                                <span className="ml-2 text-ink/50 line-through">{c.original}</span>
+                                <span className="font-display text-lg font-black">{c.price ? `₹${c.price.toLocaleString('en-IN')}` : "Free"}</span>
+                                {c.original && <span className="ml-2 text-ink/50 line-through">{c.original}</span>}
                               </p>
                             </div>
                             <Link
                               to="/courses/$slug"
-                              params={{ slug: c.slug }}
+                              params={{ slug: c.slug || c.id || "course" }}
                               className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-xs font-semibold text-cream transition-colors hover:bg-saffron"
                             >
                               View full syllabus <ArrowUpRight size={14} />
@@ -293,9 +300,9 @@ function CoursesPage() {
   );
 }
 
-function CourseCard({ course }: { course: CourseData }) {
-  const isSaffron = course.theme === "saffron";
-  const subjects = course.subjectsSummary.split(" · ");
+function CourseCard({ course }: { course: any }) {
+  const isSaffron = course.theme === "saffron" || course.classLevel === "9" || course.classLevel === "11";
+  const subjects = (course.subjectsSummary || course.subject || "All Subjects").split(" · ");
   
   return (
     <motion.article
@@ -318,13 +325,13 @@ function CourseCard({ course }: { course: CourseData }) {
             isSaffron ? "bg-cream text-saffron" : "bg-navy text-cream"
           }`}
         >
-          {course.grade}
+          {course.grade || `Class ${course.classLevel}`}
         </div>
         <h3 className="mt-5 font-display text-2xl font-black leading-tight md:text-[26px] transition-colors">
-          {course.title}
+          {course.title || course.name}
         </h3>
         <p className={`mt-3 text-sm leading-relaxed line-clamp-3 ${isSaffron ? "text-cream/90" : "text-ink"}`}>
-          {course.blurb}
+          {course.blurb || course.description}
         </p>
         <ul className="mt-5 flex flex-wrap gap-1.5">
           {subjects.map((s) => (
@@ -343,20 +350,20 @@ function CourseCard({ course }: { course: CourseData }) {
         <div className="min-w-0">
           <p className={`text-xs ${isSaffron ? "text-cream/70" : "text-ink/70"}`}>From</p>
           <p className="font-display text-2xl font-black">
-            {course.price}
+            {course.price ? `₹${course.price.toLocaleString('en-IN')}` : "Free"}
             <span
               className={`ml-2 align-middle text-sm font-medium line-through ${
                 isSaffron ? "text-cream/55" : "text-ink/50"
               }`}
             >
-              {course.original}
+              {course.original || ""}
             </span>
           </p>
         </div>
         <Link
           to="/courses/$slug"
-          params={{ slug: course.slug }}
-          aria-label={`View ${course.title}`}
+          params={{ slug: course.slug || course.id || "course" }}
+          aria-label={`View ${course.title || course.name}`}
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
             isSaffron ? "bg-cream text-saffron hover:bg-white" : "bg-navy text-cream hover:bg-saffron hover:border-transparent"
           }`}

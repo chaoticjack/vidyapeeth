@@ -1,0 +1,81 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if a user is an admin
+    function isAdmin() {
+      return request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.token.email));
+    }
+
+    match /admins/{email} {
+      allow read: if request.auth != null && (request.auth.token.email == email || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isAdmin();
+    }
+    
+    // Students is basically an alias/virtual concept over users, but if there's a specific students collection:
+    match /students/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    match /demoRegistrations/{document=**} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /vsatRegistrations/{document=**} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /contactMessages/{document=**} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /newsletterSubscribers/{document=**} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /courses/{document=**} {
+      allow create, update, delete: if isAdmin();
+      allow read: if true;
+    }
+
+    match /blogs/{document=**} {
+      allow create, update, delete: if isAdmin();
+      allow read: if true;
+    }
+
+    match /teachers/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    match /settings/{document=**} {
+      allow read, write: if isAdmin();
+    }
+    
+    match /enrollments/{document=**} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if isAdmin();
+    }
+
+    match /progress/{document=**} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

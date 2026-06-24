@@ -60,16 +60,20 @@ function CourseCurriculumPage() {
                 </p>
                 <div className="mt-10 flex flex-wrap items-center gap-4">
                   <Link
-                    to="/demo-class"
+                    to="/enroll/$courseId"
+                    params={{ courseId: course.slug! }}
                     className={`inline-flex h-14 items-center justify-center rounded-full px-8 text-sm font-bold transition-transform hover:-translate-y-1 ${
                       isSaffron ? "bg-navy text-cream shadow-xl" : "bg-saffron text-cream shadow-xl shadow-saffron/20"
                     }`}
                   >
-                    Book Free Demo <ArrowUpRight size={18} className="ml-2" />
+                    Enroll Now <ArrowUpRight size={18} className="ml-2" />
                   </Link>
-                  <button className="inline-flex h-14 items-center justify-center rounded-full border-2 border-cream/20 px-8 text-sm font-bold text-cream transition-colors hover:bg-cream/10">
-                    Download Brochure
-                  </button>
+                  <Link
+                    to="/demo-class"
+                    className="inline-flex h-14 items-center justify-center rounded-full border-2 border-cream/20 px-8 text-sm font-bold text-cream transition-colors hover:bg-cream/10"
+                  >
+                    Book Free Demo
+                  </Link>
                 </div>
               </div>
 

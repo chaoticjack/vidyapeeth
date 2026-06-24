@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, Clock, Search, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { ArrowUpRight, Clock, Search, ChevronDown, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { fetchPublishedBlogs, Blog } from "@/lib/firestore";
 
 export const Route = createFileRoute("/blog")({
   head: () => ({
@@ -292,24 +293,58 @@ function ThemedCover({
 }
 
 function BlogPage() {
-  const [featured, ...rest] = posts;
+  const [allPosts, setAllPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const blogs = await fetchPublishedBlogs();
+        setAllPosts(blogs); 
+      } catch (e) {
+        console.error(e);
+        setAllPosts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  if (loading) return <div className="grain bg-cream flex justify-center items-center h-96"><Loader2 className="animate-spin text-navy" size={32} /></div>;
+
+  const featured = allPosts[0];
+  const rest = allPosts.slice(1);
 
   const filtered = search.trim()
     ? rest.filter(
         (p) =>
-          p.title.toLowerCase().includes(search.toLowerCase()) ||
-          p.tag.toLowerCase().includes(search.toLowerCase()) ||
-          p.kicker.toLowerCase().includes(search.toLowerCase())
+          p.title?.toLowerCase().includes(search.toLowerCase()) ||
+          (p.tags && p.tags.some((t: string) => t.toLowerCase().includes(search.toLowerCase()))) ||
+          p.tag?.toLowerCase().includes(search.toLowerCase()) ||
+          p.kicker?.toLowerCase().includes(search.toLowerCase())
       )
     : rest;
 
   const featuredMatches =
     !search.trim() ||
-    featured.title.toLowerCase().includes(search.toLowerCase()) ||
-    featured.tag.toLowerCase().includes(search.toLowerCase()) ||
-    featured.kicker.toLowerCase().includes(search.toLowerCase());
+    (featured && (
+      featured.title?.toLowerCase().includes(search.toLowerCase()) ||
+      (featured.tags && featured.tags.some((t: string) => t.toLowerCase().includes(search.toLowerCase()))) ||
+      featured.tag?.toLowerCase().includes(search.toLowerCase()) ||
+      featured.kicker?.toLowerCase().includes(search.toLowerCase())
+    ));
+
+  if (!loading && allPosts.length === 0) {
+    return (
+      <div className="grain bg-cream flex flex-col items-center justify-center py-40 px-6 text-center">
+        <h1 className="font-display text-4xl font-black text-navy md:text-5xl">No Articles Yet</h1>
+        <p className="mt-4 text-ink text-lg">Check back later for new updates from our team!</p>
+      </div>
+    );
+  }
 
   return (
     <div className="grain bg-cream">
@@ -357,11 +392,15 @@ function BlogPage() {
           <div className="mx-auto max-w-6xl px-6">
             <article className="group grid overflow-hidden rounded-3xl border border-navy/10 bg-card md:grid-cols-2">
               <div className="aspect-[4/3] md:aspect-auto">
-                <ThemedCover
-                  theme={featured.theme}
-                  kicker={featured.kicker}
-                  tag={featured.tag}
-                />
+                {featured.featuredImage ? (
+                  <img src={featured.featuredImage} alt={featured.title} className="w-full h-full object-cover" />
+                ) : (
+                  <ThemedCover
+                      theme={featured.theme || "navy"}
+                      kicker={featured.kicker || (featured.tags && featured.tags[0]) || "Featured"}
+                      tag={featured.tag || "Insight"}
+                  />
+                )}
               </div>
               <div className="flex flex-col justify-center p-8 md:p-10">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-saffron-deep">
@@ -370,9 +409,9 @@ function BlogPage() {
                 <h2 className="mt-3 font-display text-3xl font-black text-navy md:text-4xl">
                   {featured.title}
                 </h2>
-                <p className="mt-4 text-ink">{featured.excerpt}</p>
+                <p className="mt-4 text-ink">{featured.excerpt || (featured.content && featured.content.substring(0, 100))}</p>
                 <div className="mt-6 flex items-center gap-4 text-sm text-ink/70">
-                  <Clock size={14} /> {featured.minutes} min read
+                  <Clock size={14} /> {featured.minutes || 5} min read
                 </div>
               </div>
             </article>
@@ -391,18 +430,23 @@ function BlogPage() {
                   className="group overflow-hidden rounded-3xl border border-navy/10 bg-card transition-all hover:-translate-y-1 hover:shadow-[0_30px_60px_-30px_rgba(27,42,74,0.35)]"
                 >
                   <div className="aspect-[4/3]">
-                    <ThemedCover theme={p.theme} kicker={p.kicker} tag={p.tag} />
+                    {p.featuredImage ? (
+                      <img src={p.featuredImage} alt={p.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <ThemedCover theme={p.theme || "navy"} kicker={p.kicker || (p.tags && p.tags[0]) || "Read"} tag={p.tag || "Insight"} />
+                    )}
                   </div>
                   <div className="p-6">
                     <span className="text-xs font-bold uppercase tracking-[0.18em] text-saffron-deep">
-                      {p.tag}
+                      {p.tag || "Insight"}
                     </span>
                     <h3 className="mt-2 font-display text-xl font-bold text-navy">{p.title}</h3>
-                    <p className="mt-3 line-clamp-3 text-sm text-ink">{p.excerpt}</p>
+                    <p className="mt-3 line-clamp-3 text-sm text-ink">{p.excerpt || (p.content && p.content.substring(0, 100))}</p>
                     <div className="mt-5 flex items-center justify-between text-sm">
-                      <span className="inline-flex items-center gap-1.5 text-ink/70">
-                        <Clock size={14} /> {p.minutes} min
-                      </span>
+                      <div className="flex items-center gap-2 text-ink/60">
+                        <Clock size={14} />
+                        {p.minutes || 5} min read
+                      </div>
                       <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-navy text-cream transition-colors group-hover:bg-saffron">
                         <ArrowUpRight size={16} />
                       </span>

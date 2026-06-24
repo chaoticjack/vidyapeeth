@@ -1,11 +1,37 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { 
   Instagram, Youtube, Linkedin, Twitter, 
-  Mail, Phone, MapPin
+  Mail, Phone, MapPin, Loader2
 } from "lucide-react";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { toast } from "sonner";
 
 export function Footer() {
   const year = new Date().getFullYear();
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    try {
+      await addDoc(collection(db, "newsletterSubscribers"), {
+        email,
+        createdAt: serverTimestamp(),
+      });
+      toast.success("Subscribed to newsletter successfully!");
+      setEmail("");
+    } catch (err) {
+      console.error("Error subscribing:", err);
+      toast.error("Failed to subscribe. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="relative border-t border-cream/10 bg-navy">
       <footer className="text-cream pt-8 pb-0 relative z-10">
@@ -17,18 +43,21 @@ export function Footer() {
               <h3 className="font-display text-lg font-bold text-cream">Get Weekly Study Tips</h3>
               <p className="text-cream/70 text-xs">Exam strategies and scholarship updates directly in your inbox.</p>
             </div>
-            <form className="flex w-full max-w-sm gap-2" onSubmit={(e) => e.preventDefault()}>
+            <form className="flex w-full max-w-sm gap-2" onSubmit={handleSubscribe}>
               <input 
                 type="email" 
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 placeholder="Enter your email" 
                 className="w-full rounded-full bg-cream/10 border border-cream/20 px-4 py-2 text-sm text-cream placeholder:text-cream/40 focus:border-saffron focus:outline-none focus:ring-1 focus:ring-saffron transition-colors"
                 required
               />
               <button 
                 type="submit" 
-                className="flex items-center justify-center shrink-0 rounded-full bg-saffron px-5 py-2 text-sm font-semibold text-cream hover:bg-[#E66100] transition-colors"
+                disabled={loading}
+                className="flex items-center justify-center shrink-0 rounded-full bg-saffron px-5 py-2 text-sm font-semibold text-cream hover:bg-[#E66100] transition-colors disabled:opacity-50"
               >
-                Subscribe
+                {loading ? <Loader2 size={16} className="animate-spin" /> : "Subscribe"}
               </button>
             </form>
           </div>

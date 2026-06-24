@@ -24,17 +24,22 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CoursesIndexRouteImport } from './routes/courses.index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as CoursesSlugRouteImport } from './routes/courses.$slug'
+import { Route as AdminVsatRegistrationsRouteImport } from './routes/admin/vsat-registrations'
 import { Route as AdminTeachersRouteImport } from './routes/admin/teachers'
 import { Route as AdminStudentsRouteImport } from './routes/admin/students'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminEnrollmentsRouteImport } from './routes/admin/enrollments'
 import { Route as AdminDemoRequestsRouteImport } from './routes/admin/demo-requests'
 import { Route as AdminCoursesRouteImport } from './routes/admin/courses'
+import { Route as AdminContactMessagesRouteImport } from './routes/admin/contact-messages'
 import { Route as AdminBlogsRouteImport } from './routes/admin/blogs'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as CoursesClassSlugSubjectSlugRouteImport } from './routes/courses.$classSlug.$subjectSlug'
+import { Route as AuthenticatedEnrollCourseIdRouteImport } from './routes/_authenticated/enroll.$courseId'
+import { Route as AuthenticatedEnrollSuccessCourseIdRouteImport } from './routes/_authenticated/enroll-success.$courseId'
 import { Route as AuthenticatedDashboardProgressRouteImport } from './routes/_authenticated/dashboard_.progress'
 
 const VsatRoute = VsatRouteImport.update({
@@ -111,6 +116,11 @@ const CoursesSlugRoute = CoursesSlugRouteImport.update({
   path: '/courses/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminVsatRegistrationsRoute = AdminVsatRegistrationsRouteImport.update({
+  id: '/vsat-registrations',
+  path: '/vsat-registrations',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminTeachersRoute = AdminTeachersRouteImport.update({
   id: '/teachers',
   path: '/teachers',
@@ -126,6 +136,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminEnrollmentsRoute = AdminEnrollmentsRouteImport.update({
+  id: '/enrollments',
+  path: '/enrollments',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDemoRequestsRoute = AdminDemoRequestsRouteImport.update({
   id: '/demo-requests',
   path: '/demo-requests',
@@ -134,6 +149,11 @@ const AdminDemoRequestsRoute = AdminDemoRequestsRouteImport.update({
 const AdminCoursesRoute = AdminCoursesRouteImport.update({
   id: '/courses',
   path: '/courses',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminContactMessagesRoute = AdminContactMessagesRouteImport.update({
+  id: '/contact-messages',
+  path: '/contact-messages',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminBlogsRoute = AdminBlogsRouteImport.update({
@@ -167,6 +187,18 @@ const CoursesClassSlugSubjectSlugRoute =
     path: '/courses/$classSlug/$subjectSlug',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedEnrollCourseIdRoute =
+  AuthenticatedEnrollCourseIdRouteImport.update({
+    id: '/enroll/$courseId',
+    path: '/enroll/$courseId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedEnrollSuccessCourseIdRoute =
+  AuthenticatedEnrollSuccessCourseIdRouteImport.update({
+    id: '/enroll-success/$courseId',
+    path: '/enroll-success/$courseId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardProgressRoute =
   AuthenticatedDashboardProgressRouteImport.update({
     id: '/dashboard_/progress',
@@ -191,15 +223,20 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/blogs': typeof AdminBlogsRoute
+  '/admin/contact-messages': typeof AdminContactMessagesRoute
   '/admin/courses': typeof AdminCoursesRoute
   '/admin/demo-requests': typeof AdminDemoRequestsRoute
+  '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/teachers': typeof AdminTeachersRoute
+  '/admin/vsat-registrations': typeof AdminVsatRegistrationsRoute
   '/courses/$slug': typeof CoursesSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/courses/': typeof CoursesIndexRoute
   '/dashboard/progress': typeof AuthenticatedDashboardProgressRoute
+  '/enroll-success/$courseId': typeof AuthenticatedEnrollSuccessCourseIdRoute
+  '/enroll/$courseId': typeof AuthenticatedEnrollCourseIdRoute
   '/courses/$classSlug/$subjectSlug': typeof CoursesClassSlugSubjectSlugRoute
 }
 export interface FileRoutesByTo {
@@ -218,15 +255,20 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/blogs': typeof AdminBlogsRoute
+  '/admin/contact-messages': typeof AdminContactMessagesRoute
   '/admin/courses': typeof AdminCoursesRoute
   '/admin/demo-requests': typeof AdminDemoRequestsRoute
+  '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/teachers': typeof AdminTeachersRoute
+  '/admin/vsat-registrations': typeof AdminVsatRegistrationsRoute
   '/courses/$slug': typeof CoursesSlugRoute
   '/admin': typeof AdminIndexRoute
   '/courses': typeof CoursesIndexRoute
   '/dashboard/progress': typeof AuthenticatedDashboardProgressRoute
+  '/enroll-success/$courseId': typeof AuthenticatedEnrollSuccessCourseIdRoute
+  '/enroll/$courseId': typeof AuthenticatedEnrollCourseIdRoute
   '/courses/$classSlug/$subjectSlug': typeof CoursesClassSlugSubjectSlugRoute
 }
 export interface FileRoutesById {
@@ -248,15 +290,20 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/blogs': typeof AdminBlogsRoute
+  '/admin/contact-messages': typeof AdminContactMessagesRoute
   '/admin/courses': typeof AdminCoursesRoute
   '/admin/demo-requests': typeof AdminDemoRequestsRoute
+  '/admin/enrollments': typeof AdminEnrollmentsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/teachers': typeof AdminTeachersRoute
+  '/admin/vsat-registrations': typeof AdminVsatRegistrationsRoute
   '/courses/$slug': typeof CoursesSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/courses/': typeof CoursesIndexRoute
   '/_authenticated/dashboard_/progress': typeof AuthenticatedDashboardProgressRoute
+  '/_authenticated/enroll-success/$courseId': typeof AuthenticatedEnrollSuccessCourseIdRoute
+  '/_authenticated/enroll/$courseId': typeof AuthenticatedEnrollCourseIdRoute
   '/courses/$classSlug/$subjectSlug': typeof CoursesClassSlugSubjectSlugRoute
 }
 export interface FileRouteTypes {
@@ -278,15 +325,20 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/analytics'
     | '/admin/blogs'
+    | '/admin/contact-messages'
     | '/admin/courses'
     | '/admin/demo-requests'
+    | '/admin/enrollments'
     | '/admin/settings'
     | '/admin/students'
     | '/admin/teachers'
+    | '/admin/vsat-registrations'
     | '/courses/$slug'
     | '/admin/'
     | '/courses/'
     | '/dashboard/progress'
+    | '/enroll-success/$courseId'
+    | '/enroll/$courseId'
     | '/courses/$classSlug/$subjectSlug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -305,15 +357,20 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/analytics'
     | '/admin/blogs'
+    | '/admin/contact-messages'
     | '/admin/courses'
     | '/admin/demo-requests'
+    | '/admin/enrollments'
     | '/admin/settings'
     | '/admin/students'
     | '/admin/teachers'
+    | '/admin/vsat-registrations'
     | '/courses/$slug'
     | '/admin'
     | '/courses'
     | '/dashboard/progress'
+    | '/enroll-success/$courseId'
+    | '/enroll/$courseId'
     | '/courses/$classSlug/$subjectSlug'
   id:
     | '__root__'
@@ -334,15 +391,20 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/admin/analytics'
     | '/admin/blogs'
+    | '/admin/contact-messages'
     | '/admin/courses'
     | '/admin/demo-requests'
+    | '/admin/enrollments'
     | '/admin/settings'
     | '/admin/students'
     | '/admin/teachers'
+    | '/admin/vsat-registrations'
     | '/courses/$slug'
     | '/admin/'
     | '/courses/'
     | '/_authenticated/dashboard_/progress'
+    | '/_authenticated/enroll-success/$courseId'
+    | '/_authenticated/enroll/$courseId'
     | '/courses/$classSlug/$subjectSlug'
   fileRoutesById: FileRoutesById
 }
@@ -471,6 +533,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoursesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/vsat-registrations': {
+      id: '/admin/vsat-registrations'
+      path: '/vsat-registrations'
+      fullPath: '/admin/vsat-registrations'
+      preLoaderRoute: typeof AdminVsatRegistrationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/teachers': {
       id: '/admin/teachers'
       path: '/teachers'
@@ -492,6 +561,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/enrollments': {
+      id: '/admin/enrollments'
+      path: '/enrollments'
+      fullPath: '/admin/enrollments'
+      preLoaderRoute: typeof AdminEnrollmentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/demo-requests': {
       id: '/admin/demo-requests'
       path: '/demo-requests'
@@ -504,6 +580,13 @@ declare module '@tanstack/react-router' {
       path: '/courses'
       fullPath: '/admin/courses'
       preLoaderRoute: typeof AdminCoursesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/contact-messages': {
+      id: '/admin/contact-messages'
+      path: '/contact-messages'
+      fullPath: '/admin/contact-messages'
+      preLoaderRoute: typeof AdminContactMessagesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/blogs': {
@@ -548,6 +631,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoursesClassSlugSubjectSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/enroll/$courseId': {
+      id: '/_authenticated/enroll/$courseId'
+      path: '/enroll/$courseId'
+      fullPath: '/enroll/$courseId'
+      preLoaderRoute: typeof AuthenticatedEnrollCourseIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/enroll-success/$courseId': {
+      id: '/_authenticated/enroll-success/$courseId'
+      path: '/enroll-success/$courseId'
+      fullPath: '/enroll-success/$courseId'
+      preLoaderRoute: typeof AuthenticatedEnrollSuccessCourseIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard_/progress': {
       id: '/_authenticated/dashboard_/progress'
       path: '/dashboard/progress'
@@ -563,6 +660,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedDashboardProgressRoute: typeof AuthenticatedDashboardProgressRoute
+  AuthenticatedEnrollSuccessCourseIdRoute: typeof AuthenticatedEnrollSuccessCourseIdRoute
+  AuthenticatedEnrollCourseIdRoute: typeof AuthenticatedEnrollCourseIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -570,6 +669,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedDashboardProgressRoute: AuthenticatedDashboardProgressRoute,
+  AuthenticatedEnrollSuccessCourseIdRoute:
+    AuthenticatedEnrollSuccessCourseIdRoute,
+  AuthenticatedEnrollCourseIdRoute: AuthenticatedEnrollCourseIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -578,22 +680,28 @@ const AuthenticatedRouteRouteWithChildren =
 interface AdminRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminBlogsRoute: typeof AdminBlogsRoute
+  AdminContactMessagesRoute: typeof AdminContactMessagesRoute
   AdminCoursesRoute: typeof AdminCoursesRoute
   AdminDemoRequestsRoute: typeof AdminDemoRequestsRoute
+  AdminEnrollmentsRoute: typeof AdminEnrollmentsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStudentsRoute: typeof AdminStudentsRoute
   AdminTeachersRoute: typeof AdminTeachersRoute
+  AdminVsatRegistrationsRoute: typeof AdminVsatRegistrationsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminBlogsRoute: AdminBlogsRoute,
+  AdminContactMessagesRoute: AdminContactMessagesRoute,
   AdminCoursesRoute: AdminCoursesRoute,
   AdminDemoRequestsRoute: AdminDemoRequestsRoute,
+  AdminEnrollmentsRoute: AdminEnrollmentsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminStudentsRoute: AdminStudentsRoute,
   AdminTeachersRoute: AdminTeachersRoute,
+  AdminVsatRegistrationsRoute: AdminVsatRegistrationsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

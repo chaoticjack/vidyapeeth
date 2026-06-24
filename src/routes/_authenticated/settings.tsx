@@ -3,6 +3,9 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { Loader2, KeyRound, User, Bell, LifeBuoy, LogOut, Camera, ChevronRight } from "lucide-react";
+import { doc, updateDoc } from "firebase/firestore";
+import { updatePassword } from "firebase/auth";
+import { db, auth } from "@/lib/firebase";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
@@ -42,11 +45,17 @@ function SettingsPage() {
 
   async function handleProfileSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!user) return;
     setSavingProfile(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await updateDoc(doc(db, "users", user.id), {
+        fullName: profileName,
+        phone: profilePhone,
+        email: profileEmail
+      });
       toast.success("Profile updated successfully!");
     } catch (err: any) {
+      console.error(err);
       toast.error("Failed to update profile.");
     } finally {
       setSavingProfile(false);
@@ -63,15 +72,22 @@ function SettingsPage() {
       toast.error("Password must be at least 6 characters long.");
       return;
     }
+    if (!auth.currentUser) return;
+    
     setLoadingPassword(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await updatePassword(auth.currentUser, newPassword);
       toast.success("Password updated successfully!");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
-      toast.error("Failed to update password.");
+      console.error(err);
+      if (err.code === "auth/requires-recent-login") {
+        toast.error("Please log out and log in again to change password.");
+      } else {
+        toast.error("Failed to update password.");
+      }
     } finally {
       setLoadingPassword(false);
     }

@@ -46,13 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Check if user is an admin by querying the 'admins' collection with their email
           let isAdmin = false;
           if (firebaseUser.email) {
+            console.log("User email:", firebaseUser.email);
             const adminDocRef = doc(db, "admins", firebaseUser.email);
             const adminDocSnap = await getDoc(adminDocRef).catch((err) => {
               console.error("Firestore getDoc error (admins):", err);
               return null;
             });
+            console.log("Admin doc exists?", adminDocSnap?.exists());
             if (adminDocSnap && adminDocSnap.exists()) {
               isAdmin = true;
+              console.log("User is admin");
             }
           }
 

@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { MapPin, Mail, Phone, Clock, Loader2, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const schema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -42,10 +44,18 @@ function ContactPage() {
     reset,
   } = useForm<Form>({ resolver: zodResolver(schema), mode: "onBlur" });
 
-  async function onSubmit(_values: Form) {
-    await new Promise((r) => setTimeout(r, 700));
-    toast.success("Message received. We'll reply within 4 working hours.");
-    reset();
+  async function onSubmit(values: Form) {
+    try {
+      await addDoc(collection(db, "contactMessages"), {
+        ...values,
+        createdAt: serverTimestamp(),
+      });
+      toast.success("Message received. We'll reply within 4 working hours.");
+      reset();
+    } catch (err) {
+      console.error("Error sending message:", err);
+      toast.error("Failed to send message. Please try again later.");
+    }
   }
 
   return (

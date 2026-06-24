@@ -5,10 +5,11 @@ import { useState } from "react";
 import { 
   Trophy, CalendarDays, ShieldCheck, Sparkles, 
   IndianRupee, Loader2, CheckCircle2, 
-  BookOpen, Clock, FileText, MonitorCheck,
-  Calendar
+  BookOpen, Clock, FileText, MonitorCheck, Calendar
 } from "lucide-react";
 import { toast } from "sonner";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const schema = z.object({
   studentName: z.string().min(2, "Student name is required"),
@@ -70,12 +71,19 @@ export function VsatPage() {
   });
 
   async function onSubmit(values: Form) {
-    // Simulate network delay for Firebase preparation
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      await addDoc(collection(db, "vsatRegistrations"), {
+        ...values,
+        createdAt: serverTimestamp(),
+      });
 
-    toast.success("Registration submitted. Check your email.");
-    setDone(true);
-    reset();
+      toast.success("Registration submitted. Check your email.");
+      setDone(true);
+      reset();
+    } catch (err) {
+      console.error("Error registering for VSAT:", err);
+      toast.error("Failed to submit registration. Please try again later.");
+    }
   }
 
   return (
