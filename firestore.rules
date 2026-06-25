@@ -63,6 +63,16 @@ service cloud.firestore {
     
     match /enrollments/{document=**} {
       allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /orders/{document=**} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /activities/{document=**} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
       allow update, delete: if isAdmin();
     }

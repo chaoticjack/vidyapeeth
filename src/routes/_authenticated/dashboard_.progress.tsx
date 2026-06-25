@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
+import { useEffect, useState } from "react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const searchSchema = z.object({
   confirmed: z.enum(["demo", "enrollment"]).optional(),
@@ -20,20 +23,40 @@ export const Route = createFileRoute("/_authenticated/dashboard_/progress")({
   component: ProgressPage,
 });
 
-// Mock Data
-const mockBookings = [
-  { id: "b1", subject: "Mathematics - Class 10", date: "June 15, 2026", status: "confirmed" },
-  { id: "b2", subject: "Science - Class 10", date: "June 10, 2026", status: "completed" },
-];
-
-const mockEnrollments = [
-  { id: "e1", title: "Mathematics Foundation Track", date: "June 16, 2026", status: "active" },
-  { id: "e2", title: "Science Explorer Track", date: "June 16, 2026", status: "active" },
-];
+// Mock Data Removed
 
 function ProgressPage() {
   const { confirmed, ref } = Route.useSearch();
   const { user } = useAuth();
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [demoBookings, setDemoBookings] = useState<any[]>([]);
+  const [topicsMastered, setTopicsMastered] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubE = onSnapshot(
+      query(collection(db, "enrollments"), where("userId", "==", user.id)),
+      (snap) => setEnrollments(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
+
+    const unsubD = onSnapshot(
+      query(collection(db, "demoRegistrations"), where("userId", "==", user.id)),
+      (snap) => setDemoBookings(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
+
+    // Fetch topics mastered based on lesson_completed activities
+    const unsubTopics = onSnapshot(
+      query(collection(db, "activities"), where("userId", "==", user.id), where("type", "==", "lesson_completed")),
+      (snap) => setTopicsMastered(snap.size)
+    );
+
+    return () => {
+      unsubE();
+      unsubD();
+      unsubTopics();
+    };
+  }, [user]);
 
   if (!user) return null;
 
@@ -88,17 +111,17 @@ function ProgressPage() {
           <Stat
             icon={<Sparkles size={18} className="text-saffron" />}
             label="Active Enrollments"
-            value={mockEnrollments.length}
+            value={enrollments.length}
           />
           <Stat
             icon={<CalendarCheck2 size={18} className="text-saffron" />}
             label="Demo Classes Taken"
-            value={mockBookings.length}
+            value={demoBookings.length}
           />
           <Stat
             icon={<CheckCircle2 size={18} className="text-saffron" />}
             label="Topics Mastered"
-            value={14}
+            value={topicsMastered}
           />
         </div>
 
@@ -108,7 +131,7 @@ function ProgressPage() {
             <h2 className="font-display text-xl font-black text-navy">Current Enrollments</h2>
           </div>
           <div className="mt-5">
-            {mockEnrollments.length === 0 ? (
+            {enrollments.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-navy/15 p-8 text-center">
                 <p className="font-semibold text-navy">No active courses</p>
                 <Link
@@ -120,16 +143,16 @@ function ProgressPage() {
               </div>
             ) : (
               <ul className="divide-y divide-navy/10">
-                {mockEnrollments.map((e) => (
+                {enrollments.map((e) => (
                   <li
                     key={e.id}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-4 sm:flex sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-navy">{e.title}</p>
-                      <p className="mt-0.5 text-xs text-ink/60">Enrolled on {e.date}</p>
+                      <p className="truncate font-semibold text-navy">{e.courseName}</p>
+                      <p className="mt-0.5 text-xs text-ink/60">Enrolled on {e.createdAt?.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || 'Recently'}</p>
                     </div>
-                    <StatusPill status={e.status} />
+                    <StatusPill status={e.status || "active"} />
                   </li>
                 ))}
               </ul>
@@ -144,7 +167,7 @@ function ProgressPage() {
           </div>
 
           <div className="mt-5">
-            {mockBookings.length === 0 ? (
+            {demoBookings.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-navy/15 p-8 text-center">
                 <p className="font-semibold text-navy">No class history</p>
                 <Link
@@ -156,16 +179,16 @@ function ProgressPage() {
               </div>
             ) : (
               <ul className="divide-y divide-navy/10">
-                {mockBookings.map((b) => (
+                {demoBookings.map((b) => (
                   <li
                     key={b.id}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-4 sm:flex sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-navy">{b.subject}</p>
-                      <p className="mt-0.5 text-xs text-ink/60">Scheduled for {b.date}</p>
+                      <p className="truncate font-semibold text-navy">Class {b.classLevel} Demo - {b.studentName}</p>
+                      <p className="mt-0.5 text-xs text-ink/60">Scheduled for {b.createdAt?.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || 'Recently'}</p>
                     </div>
-                    <StatusPill status={b.status} />
+                    <StatusPill status={b.status || "pending"} />
                   </li>
                 ))}
               </ul>

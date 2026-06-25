@@ -14,6 +14,9 @@ export interface UserProfile {
   isAdmin?: boolean;
   photoURL?: string;
   authProvider?: string;
+  role?: string;
+  onboarded?: boolean;
+  onboardingCompleted?: boolean;
 }
 
 interface AuthContextType {
@@ -69,6 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               classLevel: data.classLevel || "",
               createdAt: data.createdAt || "",
               rewardPoints: data.rewardPoints || 0,
+              role: data.role || "student",
+              onboarded: data.onboarded || false,
+              onboardingCompleted: data.onboardingCompleted || false,
               isAdmin,
             });
           } else {
@@ -81,6 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               phone: "",
               classLevel: "6", // Default class
               rewardPoints: 0,
+              role: "student",
+              onboarded: false,
+              onboardingCompleted: false,
               isAdmin,
             };
             
@@ -96,6 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 classLevel: defaultUser.classLevel,
                 createdAt: new Date().toISOString(),
                 rewardPoints: 0,
+                role: "student",
+                onboarded: false,
+                onboardingCompleted: false,
               });
               console.log("Automatically created missing Firestore profile");
             } catch (createErr) {
@@ -133,6 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       classLevel: data.classLevel,
       createdAt: new Date().toISOString(),
       rewardPoints: 0,
+      role: "student",
+      onboarded: false,
+      onboardingCompleted: false,
     };
     
     await setDoc(doc(db, "users", firebaseUser.uid), userDoc);
@@ -153,6 +168,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: firebaseUser.email || "",
       ...data,
       createdAt: userDoc.createdAt,
+      role: "student",
+      onboarded: false,
+      onboardingCompleted: false,
       isAdmin,
     });
   };
@@ -177,6 +195,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: firebaseUser.phoneNumber || "",
         createdAt: new Date().toISOString(),
         rewardPoints: 0,
+        role: "student",
+        onboarded: false,
+        onboardingCompleted: false,
       };
       await setDoc(docRef, userDoc).catch(console.error);
     }

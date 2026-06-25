@@ -25,6 +25,13 @@ const courseSchema = z.object({
   teacherId: z.string().optional(),
   thumbnail: z.string().optional(),
   status: z.enum(["draft", "published"]).default("published"),
+  hasLiveClasses: z.boolean().default(false),
+  liveClassSchedule: z.object({
+    dayOfWeek: z.string().optional(),
+    time: z.string().optional(),
+    duration: z.string().optional(),
+    zoomLink: z.string().optional()
+  }).optional(),
 });
 type CourseForm = z.infer<typeof courseSchema>;
 
@@ -44,10 +51,12 @@ function AdminCourses() {
   
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CourseForm>({
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<CourseForm>({
     resolver: zodResolver(courseSchema),
-    defaultValues: { classLevel: "10", price: 0, status: "published" }
+    defaultValues: { classLevel: "10", price: 0, status: "published", hasLiveClasses: false }
   });
+
+  const hasLiveClasses = watch("hasLiveClasses");
 
   useEffect(() => {
     // Fetch courses
@@ -73,7 +82,7 @@ function AdminCourses() {
   }, []);
 
   const openCreateModal = () => {
-    reset({ name: "", classLevel: "10", subject: "", description: "", price: 0, curriculum: "", teacherId: "", thumbnail: "" });
+    reset({ name: "", classLevel: "10", subject: "", description: "", price: 0, curriculum: "", teacherId: "", thumbnail: "", hasLiveClasses: false, liveClassSchedule: { dayOfWeek: "1", time: "17:00", duration: "60", zoomLink: "" } });
     setEditingId(null);
     setIsModalOpen(true);
   };
@@ -89,6 +98,8 @@ function AdminCourses() {
       teacherId: course.teacherId || "",
       thumbnail: course.thumbnail || "",
       status: course.status || "published",
+      hasLiveClasses: course.hasLiveClasses || false,
+      liveClassSchedule: course.liveClassSchedule || { dayOfWeek: "1", time: "17:00", duration: "60", zoomLink: "" },
     });
     setEditingId(course.id);
     setIsModalOpen(true);
@@ -97,9 +108,31 @@ function AdminCourses() {
   const onSubmit = async (data: CourseForm) => {
     try {
       const isPublished = data.status === "published";
+      
+      let upcomingLiveClass = null;
+      if (data.hasLiveClasses && data.liveClassSchedule?.dayOfWeek && data.liveClassSchedule?.time) {
+        const today = new Date();
+        const currentDay = today.getDay();
+        const targetDay = parseInt(data.liveClassSchedule.dayOfWeek);
+        let daysUntil = targetDay - currentDay;
+        if (daysUntil < 0) daysUntil += 7;
+        
+        const [hours, minutes] = data.liveClassSchedule.time.split(':').map(Number);
+        if (daysUntil === 0) {
+            if (today.getHours() > hours || (today.getHours() === hours && today.getMinutes() > minutes)) {
+                daysUntil = 7;
+            }
+        }
+        const nextClassDate = new Date(today);
+        nextClassDate.setDate(today.getDate() + daysUntil);
+        nextClassDate.setHours(hours, minutes, 0, 0);
+        upcomingLiveClass = nextClassDate.toISOString();
+      }
+
       const payload: any = {
         ...data,
-        published: isPublished
+        published: isPublished,
+        upcomingLiveClass
       };
 
       if (editingId) {
@@ -258,6 +291,42 @@ function AdminCourses() {
                       <option value="published">Published</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="space-y-4 rounded-xl border border-navy/10 bg-navy/5 p-4">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="hasLiveClasses" {...register("hasLiveClasses")} className="w-4 h-4 rounded border-gray-300 text-saffron focus:ring-saffron" />
+                    <label htmlFor="hasLiveClasses" className="text-sm font-bold text-navy">Enable Weekly Live Classes</label>
+                  </div>
+                  
+                  {hasLiveClasses && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-navy">Day of Week</label>
+                        <select {...register("liveClassSchedule.dayOfWeek")} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-saffron text-sm bg-white">
+                          <option value="1">Monday</option>
+                          <option value="2">Tuesday</option>
+                          <option value="3">Wednesday</option>
+                          <option value="4">Thursday</option>
+                          <option value="5">Friday</option>
+                          <option value="6">Saturday</option>
+                          <option value="0">Sunday</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-navy">Time</label>
+                        <input type="time" {...register("liveClassSchedule.time")} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-saffron text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-navy">Duration (mins)</label>
+                        <input type="number" {...register("liveClassSchedule.duration")} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-saffron text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-navy">Meeting Link</label>
+                        <input type="url" {...register("liveClassSchedule.zoomLink")} placeholder="https://zoom.us/..." className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-saffron text-sm" />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">

@@ -28,6 +28,7 @@ import { Route as AdminVsatRegistrationsRouteImport } from './routes/admin/vsat-
 import { Route as AdminTeachersRouteImport } from './routes/admin/teachers'
 import { Route as AdminStudentsRouteImport } from './routes/admin/students'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminEnrollmentsRouteImport } from './routes/admin/enrollments'
 import { Route as AdminDemoRequestsRouteImport } from './routes/admin/demo-requests'
 import { Route as AdminCoursesRouteImport } from './routes/admin/courses'
@@ -38,6 +39,9 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as CoursesClassSlugSubjectSlugRouteImport } from './routes/courses.$classSlug.$subjectSlug'
+import { Route as ApiPaymentsWebhookRouteImport } from './routes/api/payments/webhook'
+import { Route as ApiPaymentsVerifyRouteImport } from './routes/api/payments/verify'
+import { Route as ApiPaymentsCreateOrderRouteImport } from './routes/api/payments/create-order'
 import { Route as AuthenticatedEnrollCourseIdRouteImport } from './routes/_authenticated/enroll.$courseId'
 import { Route as AuthenticatedEnrollSuccessCourseIdRouteImport } from './routes/_authenticated/enroll-success.$courseId'
 import { Route as AuthenticatedDashboardProgressRouteImport } from './routes/_authenticated/dashboard_.progress'
@@ -136,6 +140,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminEnrollmentsRoute = AdminEnrollmentsRouteImport.update({
   id: '/enrollments',
   path: '/enrollments',
@@ -187,6 +196,21 @@ const CoursesClassSlugSubjectSlugRoute =
     path: '/courses/$classSlug/$subjectSlug',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPaymentsWebhookRoute = ApiPaymentsWebhookRouteImport.update({
+  id: '/api/payments/webhook',
+  path: '/api/payments/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPaymentsVerifyRoute = ApiPaymentsVerifyRouteImport.update({
+  id: '/api/payments/verify',
+  path: '/api/payments/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPaymentsCreateOrderRoute = ApiPaymentsCreateOrderRouteImport.update({
+  id: '/api/payments/create-order',
+  path: '/api/payments/create-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedEnrollCourseIdRoute =
   AuthenticatedEnrollCourseIdRouteImport.update({
     id: '/enroll/$courseId',
@@ -227,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/admin/courses': typeof AdminCoursesRoute
   '/admin/demo-requests': typeof AdminDemoRequestsRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
+  '/admin/login': typeof AdminLoginRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/teachers': typeof AdminTeachersRoute
@@ -237,6 +262,9 @@ export interface FileRoutesByFullPath {
   '/dashboard/progress': typeof AuthenticatedDashboardProgressRoute
   '/enroll-success/$courseId': typeof AuthenticatedEnrollSuccessCourseIdRoute
   '/enroll/$courseId': typeof AuthenticatedEnrollCourseIdRoute
+  '/api/payments/create-order': typeof ApiPaymentsCreateOrderRoute
+  '/api/payments/verify': typeof ApiPaymentsVerifyRoute
+  '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
   '/courses/$classSlug/$subjectSlug': typeof CoursesClassSlugSubjectSlugRoute
 }
 export interface FileRoutesByTo {
@@ -259,6 +287,7 @@ export interface FileRoutesByTo {
   '/admin/courses': typeof AdminCoursesRoute
   '/admin/demo-requests': typeof AdminDemoRequestsRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
+  '/admin/login': typeof AdminLoginRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/teachers': typeof AdminTeachersRoute
@@ -269,6 +298,9 @@ export interface FileRoutesByTo {
   '/dashboard/progress': typeof AuthenticatedDashboardProgressRoute
   '/enroll-success/$courseId': typeof AuthenticatedEnrollSuccessCourseIdRoute
   '/enroll/$courseId': typeof AuthenticatedEnrollCourseIdRoute
+  '/api/payments/create-order': typeof ApiPaymentsCreateOrderRoute
+  '/api/payments/verify': typeof ApiPaymentsVerifyRoute
+  '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
   '/courses/$classSlug/$subjectSlug': typeof CoursesClassSlugSubjectSlugRoute
 }
 export interface FileRoutesById {
@@ -294,6 +326,7 @@ export interface FileRoutesById {
   '/admin/courses': typeof AdminCoursesRoute
   '/admin/demo-requests': typeof AdminDemoRequestsRoute
   '/admin/enrollments': typeof AdminEnrollmentsRoute
+  '/admin/login': typeof AdminLoginRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/teachers': typeof AdminTeachersRoute
@@ -304,6 +337,9 @@ export interface FileRoutesById {
   '/_authenticated/dashboard_/progress': typeof AuthenticatedDashboardProgressRoute
   '/_authenticated/enroll-success/$courseId': typeof AuthenticatedEnrollSuccessCourseIdRoute
   '/_authenticated/enroll/$courseId': typeof AuthenticatedEnrollCourseIdRoute
+  '/api/payments/create-order': typeof ApiPaymentsCreateOrderRoute
+  '/api/payments/verify': typeof ApiPaymentsVerifyRoute
+  '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
   '/courses/$classSlug/$subjectSlug': typeof CoursesClassSlugSubjectSlugRoute
 }
 export interface FileRouteTypes {
@@ -329,6 +365,7 @@ export interface FileRouteTypes {
     | '/admin/courses'
     | '/admin/demo-requests'
     | '/admin/enrollments'
+    | '/admin/login'
     | '/admin/settings'
     | '/admin/students'
     | '/admin/teachers'
@@ -339,6 +376,9 @@ export interface FileRouteTypes {
     | '/dashboard/progress'
     | '/enroll-success/$courseId'
     | '/enroll/$courseId'
+    | '/api/payments/create-order'
+    | '/api/payments/verify'
+    | '/api/payments/webhook'
     | '/courses/$classSlug/$subjectSlug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -361,6 +401,7 @@ export interface FileRouteTypes {
     | '/admin/courses'
     | '/admin/demo-requests'
     | '/admin/enrollments'
+    | '/admin/login'
     | '/admin/settings'
     | '/admin/students'
     | '/admin/teachers'
@@ -371,6 +412,9 @@ export interface FileRouteTypes {
     | '/dashboard/progress'
     | '/enroll-success/$courseId'
     | '/enroll/$courseId'
+    | '/api/payments/create-order'
+    | '/api/payments/verify'
+    | '/api/payments/webhook'
     | '/courses/$classSlug/$subjectSlug'
   id:
     | '__root__'
@@ -395,6 +439,7 @@ export interface FileRouteTypes {
     | '/admin/courses'
     | '/admin/demo-requests'
     | '/admin/enrollments'
+    | '/admin/login'
     | '/admin/settings'
     | '/admin/students'
     | '/admin/teachers'
@@ -405,6 +450,9 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard_/progress'
     | '/_authenticated/enroll-success/$courseId'
     | '/_authenticated/enroll/$courseId'
+    | '/api/payments/create-order'
+    | '/api/payments/verify'
+    | '/api/payments/webhook'
     | '/courses/$classSlug/$subjectSlug'
   fileRoutesById: FileRoutesById
 }
@@ -423,6 +471,9 @@ export interface RootRouteChildren {
   VsatRoute: typeof VsatRoute
   CoursesSlugRoute: typeof CoursesSlugRoute
   CoursesIndexRoute: typeof CoursesIndexRoute
+  ApiPaymentsCreateOrderRoute: typeof ApiPaymentsCreateOrderRoute
+  ApiPaymentsVerifyRoute: typeof ApiPaymentsVerifyRoute
+  ApiPaymentsWebhookRoute: typeof ApiPaymentsWebhookRoute
   CoursesClassSlugSubjectSlugRoute: typeof CoursesClassSlugSubjectSlugRoute
 }
 
@@ -561,6 +612,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/enrollments': {
       id: '/admin/enrollments'
       path: '/enrollments'
@@ -631,6 +689,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoursesClassSlugSubjectSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/payments/webhook': {
+      id: '/api/payments/webhook'
+      path: '/api/payments/webhook'
+      fullPath: '/api/payments/webhook'
+      preLoaderRoute: typeof ApiPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/payments/verify': {
+      id: '/api/payments/verify'
+      path: '/api/payments/verify'
+      fullPath: '/api/payments/verify'
+      preLoaderRoute: typeof ApiPaymentsVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/payments/create-order': {
+      id: '/api/payments/create-order'
+      path: '/api/payments/create-order'
+      fullPath: '/api/payments/create-order'
+      preLoaderRoute: typeof ApiPaymentsCreateOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/enroll/$courseId': {
       id: '/_authenticated/enroll/$courseId'
       path: '/enroll/$courseId'
@@ -684,6 +763,7 @@ interface AdminRouteChildren {
   AdminCoursesRoute: typeof AdminCoursesRoute
   AdminDemoRequestsRoute: typeof AdminDemoRequestsRoute
   AdminEnrollmentsRoute: typeof AdminEnrollmentsRoute
+  AdminLoginRoute: typeof AdminLoginRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStudentsRoute: typeof AdminStudentsRoute
   AdminTeachersRoute: typeof AdminTeachersRoute
@@ -698,6 +778,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCoursesRoute: AdminCoursesRoute,
   AdminDemoRequestsRoute: AdminDemoRequestsRoute,
   AdminEnrollmentsRoute: AdminEnrollmentsRoute,
+  AdminLoginRoute: AdminLoginRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminStudentsRoute: AdminStudentsRoute,
   AdminTeachersRoute: AdminTeachersRoute,
@@ -722,6 +803,9 @@ const rootRouteChildren: RootRouteChildren = {
   VsatRoute: VsatRoute,
   CoursesSlugRoute: CoursesSlugRoute,
   CoursesIndexRoute: CoursesIndexRoute,
+  ApiPaymentsCreateOrderRoute: ApiPaymentsCreateOrderRoute,
+  ApiPaymentsVerifyRoute: ApiPaymentsVerifyRoute,
+  ApiPaymentsWebhookRoute: ApiPaymentsWebhookRoute,
   CoursesClassSlugSubjectSlugRoute: CoursesClassSlugSubjectSlugRoute,
 }
 export const routeTree = rootRouteImport

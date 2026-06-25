@@ -143,6 +143,17 @@ export interface Progress {
   lastActivityAt: any;
 }
 
+export async function checkIsEnrolled(userId: string, courseId: string): Promise<boolean> {
+  const q = query(
+    collection(db, "enrollments"),
+    where("userId", "==", userId),
+    where("courseId", "==", courseId),
+    where("status", "==", "active")
+  );
+  const snapshot = await getDocs(q);
+  return !snapshot.empty;
+}
+
 export async function enrollCourse(
   userId: string,
   courseId: string,

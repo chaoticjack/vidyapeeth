@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/hooks/use-auth";
+import { logActivity } from "@/lib/activity-logger";
 
 const schema = z.object({
   studentName: z.string().min(2, "Add a name"),
@@ -103,6 +105,7 @@ function DemoClassPage() {
     reset,
   } = useForm<Form>({ resolver: zodResolver(schema), mode: "onBlur" });
 
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [confirmation, setConfirmation] = useState<{
@@ -136,15 +139,25 @@ function DemoClassPage() {
     try {
       const docRef = await addDoc(collection(db, "demoRegistrations"), {
         ...data,
+        userId: user?.id || null,
         createdAt: serverTimestamp(),
       });
+
+      if (user) {
+        await logActivity({
+          userId: user.id,
+          type: "demo_booked",
+          title: `Demo Booked for Class ${data.classLevel}`,
+          description: `You have successfully booked a demo class for ${data.studentName}.`,
+        });
+      }
 
       toast.success("Demo booked. We'll WhatsApp you within 4 hours.");
       setConfirmation({
         studentName: data.studentName,
         classLevel: data.classLevel,
         bookingId: docRef.id,
-        authed: false,
+        authed: !!user,
       });
       reset();
     } catch (err) {

@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate, notFound, Link } from "@tanstack/react-ro
 import { useState } from "react";
 import { COURSES_DATA } from "@/data/courses";
 import { useAuth } from "@/hooks/use-auth";
-import { enrollCourse } from "@/lib/firestore";
+import { enrollCourse, checkIsEnrolled } from "@/lib/firestore";
+import { logActivity } from "@/lib/activity-logger";
 import { toast } from "sonner";
 import { BookOpen, CheckCircle2, ChevronRight, Home, CreditCard } from "lucide-react";
 
@@ -35,26 +36,135 @@ function EnrollCoursePage() {
     setShowPaymentModal(true);
   };
 
-  // Mock payment processing
+  // Dynamically load Razorpay script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePaymentAndEnroll = async () => {
     if (!user) return;
     
     setIsProcessing(true);
     try {
-      // Simulate payment delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const mockPaymentId = `pay_mock_${Math.random().toString(36).substring(2, 9)}`;
+      // 0. Check if already enrolled
+      const isEnrolled = await checkIsEnrolled(user.id, courseId);
+      if (isEnrolled) {
+        toast.error("You are already enrolled in this course.");
+        setIsProcessing(false);
+        setShowPaymentModal(false);
+        return;
+      }
+
+      const res = await loadRazorpayScript();
+      if (!res) {
+        toast.error("Failed to load Razorpay SDK. Are you online?");
+        setIsProcessing(false);
+        return;
+      }
+
+      // Parse amount from string like "₹24,999" or "Free"
+      let numericAmount = 0;
+      if (course.price.toLowerCase() !== "free") {
+         numericAmount = Number(course.price.replace(/[^0-9.-]+/g, ""));
+      }
+
+      // 1. Create order
+      const orderResponse = await fetch("/api/payments/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId,
+          courseName: course.title,
+          amount: numericAmount,
+          userId: user.id
+        })
+      });
+
+      const orderData = await orderResponse.json();
+
+      if (!orderResponse.ok) {
+        throw new Error(orderData.error || "Failed to create order");
+      }
+
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: orderData.key,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Vidyapeeth",
+        description: `Enrollment for ${course.title}`,
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          try {
+            // 3. Verify Payment
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                courseId,
+                userId: user.id,
+                studentName,
+                classLevel,
+                batchTiming,
+                notes
+              })
+            });
+
+            const verifyData = await verifyRes.json();
+            
+            if (!verifyRes.ok) {
+              throw new Error(verifyData.error || "Payment verification failed");
+            }
+
+            toast.success("Enrollment successful. Course added to your dashboard.");
+            
+            await logActivity({
+              userId: user.id,
+              type: "enrollment",
+              title: `Enrolled in ${course.title}`,
+              description: `You have successfully enrolled in ${course.title}.`,
+              courseId: courseId,
+              metadata: { batchTiming, amount: numericAmount }
+            });
+
+            setShowPaymentModal(false);
+            navigate({ to: "/dashboard" }); // Or wherever the dashboard is
+          } catch (err: any) {
+            toast.error(err.message || "Enrollment failed after payment.");
+            setShowPaymentModal(false);
+          }
+        },
+        prefill: {
+          name: studentName || user.fullName,
+          email: user.email,
+        },
+        theme: {
+          color: "#0a192f" // navy
+        }
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.on("payment.failed", function (response: any) {
+        toast.error(response.error.description || "Payment failed. Please try again.");
+        setIsProcessing(false);
+        setShowPaymentModal(false);
+      });
       
-      // Perform enrollment
-      await enrollCourse(user.id, courseId, studentName, classLevel, batchTiming, notes, mockPaymentId);
-      
-      toast.success("Successfully enrolled!");
-      navigate({ to: "/enroll-success/$courseId", params: { courseId } });
+      paymentObject.open();
     } catch (error: any) {
-      toast.error(error.message || "Failed to enroll. Please try again.");
+      toast.error(error.message || "Failed to initialize payment. Please try again.");
+      setShowPaymentModal(false);
     } finally {
       setIsProcessing(false);
-      setShowPaymentModal(false);
     }
   };
 

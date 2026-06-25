@@ -2,6 +2,20 @@ import { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+function formatTimeAgo(date: Date) {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return "Just now";
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} min${diffInMinutes > 1 ? 's' : ''} ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hr${diffInHours > 1 ? 's' : ''} ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 30) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 export interface Activity {
   id: string;
   text: string;
@@ -10,14 +24,19 @@ export interface Activity {
   type?: string;
 }
 
+export interface UpcomingLiveClassData {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  zoomLink?: string;
+}
+
 export interface CourseData {
   id: string;
   title: string;
-  upcomingLiveClass?: {
-    title: string;
-    date: string; // e.g. "Today"
-    time: string; // e.g. "5:00 PM - 6:00 PM"
-  };
+  upcomingLiveClass?: any;
+  liveClassSchedule?: any;
 }
 
 export interface ActiveCourse {
@@ -32,7 +51,7 @@ export interface ActiveCourse {
 export function useDashboardData(userId?: string) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activeCourses, setActiveCourses] = useState<ActiveCourse[]>([]);
-  const [liveClasses, setLiveClasses] = useState<CourseData[]>([]);
+  const [liveClasses, setLiveClasses] = useState<UpcomingLiveClassData[]>([]);
   const [overallProgress, setOverallProgress] = useState(0);
   const [enrolledCount, setEnrolledCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -82,12 +101,36 @@ export function useDashboardData(userId?: string) {
       const qEnrollments = query(collection(db, "enrollments"), where("userId", "==", userId), where("status", "==", "active"));
       const enrollUnsub = onSnapshot(qEnrollments, (enrollSnap) => {
         setEnrolledCount(enrollSnap.size);
-        const upcoming: CourseData[] = [];
+        const upcoming: UpcomingLiveClassData[] = [];
         enrollSnap.forEach(doc => {
           const data = doc.data();
           const course = coursesMap.get(data.courseId);
           if (course && course.upcomingLiveClass) {
-            upcoming.push(course);
+            let dateStr = "Scheduled";
+            let timeStr = "";
+            let link = course.liveClassSchedule?.zoomLink || "";
+
+            if (typeof course.upcomingLiveClass === 'string') {
+                const dateObj = new Date(course.upcomingLiveClass);
+                const today = new Date();
+                if (dateObj.getDate() === today.getDate() && dateObj.getMonth() === today.getMonth() && dateObj.getFullYear() === today.getFullYear()) {
+                    dateStr = "Today";
+                } else {
+                    dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                }
+                
+                timeStr = dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                if (course.liveClassSchedule?.duration) {
+                     timeStr += ` (${course.liveClassSchedule.duration} mins)`;
+                }
+            }
+            upcoming.push({
+               id: course.id,
+               title: course.title,
+               date: dateStr,
+               time: timeStr,
+               zoomLink: link
+            });
           }
         });
         setLiveClasses(upcoming);
@@ -102,7 +145,23 @@ export function useDashboardData(userId?: string) {
       const actUnsub = onSnapshot(qActivities, (actSnap) => {
         const acts: Activity[] = [];
         actSnap.forEach(doc => {
-          acts.push({ id: doc.id, ...doc.data() } as Activity);
+          const data = doc.data();
+          let dateObj = new Date();
+          if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+            dateObj = data.timestamp.toDate();
+          } else if (typeof data.timestamp === 'string') {
+            dateObj = new Date(data.timestamp);
+          } else if (typeof data.timestamp === 'number') {
+            dateObj = new Date(data.timestamp);
+          }
+
+          acts.push({ 
+            id: doc.id, 
+            text: data.title || data.text || "Unknown Activity",
+            time: data.time || formatTimeAgo(dateObj),
+            timestamp: dateObj.toISOString(),
+            type: data.type
+          });
         });
         // Sort descending by timestamp
         acts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());

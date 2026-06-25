@@ -106,17 +106,22 @@ function DashboardPage() {
                         <CalendarCheck2 size={24} />
                       </div>
                       <div>
-                        <p className="font-bold text-navy">{course.upcomingLiveClass?.title}</p>
+                        <p className="font-bold text-navy">{course.title}</p>
                         <p className="text-sm text-ink/70 flex items-center gap-1">
-                          <Clock size={14} /> {course.upcomingLiveClass?.date}, {course.upcomingLiveClass?.time}
+                          <Clock size={14} /> {course.date}, {course.time}
                         </p>
                       </div>
-                      <button 
-                        onClick={() => toast.success("Joining class...")}
+                      <a 
+                        href={course.zoomLink || "#"}
+                        target={course.zoomLink ? "_blank" : undefined}
+                        rel={course.zoomLink ? "noreferrer" : undefined}
+                        onClick={(e) => {
+                           if (!course.zoomLink) { e.preventDefault(); toast.error("Meeting link not available yet."); }
+                        }}
                         className="ml-auto rounded-full border border-navy px-4 py-1.5 text-xs font-semibold text-navy hover:bg-navy hover:text-cream transition-colors"
                       >
                         Join Now
-                      </button>
+                      </a>
                     </div>
                   ))}
                 </div>

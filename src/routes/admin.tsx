@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, Link, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link, useRouterState, Navigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Users,
@@ -50,24 +50,12 @@ function AdminLayout() {
     );
   }
 
+  if (pathname === "/admin/login") {
+    return <Outlet />;
+  }
+
   if (!user || !user.isAdmin) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-cream p-6 text-center">
-        <div className="rounded-full bg-red-100 p-4 mb-4">
-          <ShieldAlert className="h-12 w-12 text-red-600" />
-        </div>
-        <h1 className="font-display text-3xl font-black text-navy mb-2">Access Denied</h1>
-        <p className="text-ink/70 max-w-md mb-8">
-          You do not have permission to view the Admin Portal. If you believe this is an error, please contact support.
-        </p>
-        <Link 
-          to="/dashboard" 
-          className="rounded-full bg-navy px-6 py-3 text-sm font-bold text-cream hover:bg-saffron transition-colors shadow-sm"
-        >
-          Return to Dashboard
-        </Link>
-      </div>
-    );
+    return <Navigate to="/admin/login" />;
   }
 
   return (

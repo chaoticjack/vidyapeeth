@@ -61,11 +61,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (user) {
-      if (user.isAdmin && redirect === "/dashboard") {
-        navigate({ to: "/admin" });
-      } else {
-        navigate({ to: redirect as any });
-      }
+      navigate({ to: redirect as any });
     }
   }, [user, navigate, redirect]);
 
@@ -342,6 +338,12 @@ function AuthPage() {
                   </button>
                 </p>
               )}
+              
+              <div className="mt-4 pt-4 border-t border-navy/5">
+                <Link to="/admin/login" className="text-xs text-ink/50 hover:text-navy font-semibold transition-colors">
+                  Administrator Login
+                </Link>
+              </div>
             </div>
           </div>
         </div>
