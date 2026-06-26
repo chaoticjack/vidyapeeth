@@ -1,0 +1,488 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { motion, useScroll, useSpring } from "framer-motion";
+import {
+  ArrowLeft, ChevronDown, ExternalLink,
+  Link2, Loader2, Twitter
+} from "lucide-react";
+import { toast } from "sonner";
+import { fetchBlogBySlug, fetchPublishedBlogs, type Blog } from "@/lib/firestore";
+import { ScrollReveal } from "@/components/shared/ScrollReveal";
+
+export const Route = createFileRoute("/blog/$slug")({
+  head: () => ({
+    meta: [
+      { title: "Blog — Vidyapeeth" },
+      { name: "description", content: "Read this article on the Vidyapeeth Blog." },
+    ],
+  }),
+  component: BlogPostPage,
+});
+
+function BlogPostPage() {
+  const { slug } = Route.useParams();
+  const [post, setPost] = useState<Blog | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [related, setRelated] = useState<Blog[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const data = await fetchBlogBySlug(slug);
+        setPost(data);
+        if (data) {
+          const all = await fetchPublishedBlogs();
+          const others = all.filter((b) => b.slug !== slug);
+          const sameTag = others.filter((b) => b.tags?.some((t) => data.tags?.includes(t)));
+          const fill = others.filter((b) => !sameTag.find((s) => s.id === b.id));
+          setRelated([...sameTag, ...fill].slice(0, 3));
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="grain bg-cream flex min-h-screen items-center justify-center">
+        <Loader2 className="animate-spin text-navy" size={32} />
+      </div>
+    );
+  }
+
+  if (!post) {
+    return (
+      <div className="grain bg-cream flex min-h-screen flex-col items-center justify-center px-6 text-center">
+        <h1 className="font-display text-5xl font-black text-navy">Article not found</h1>
+        <p className="mt-4 text-lg text-ink">This article doesn't exist or may have been removed.</p>
+        <Link to="/blog" className="mt-8 inline-flex items-center gap-2 rounded-full bg-navy px-6 py-3 text-sm font-semibold text-cream hover:bg-saffron transition-colors">
+          <ArrowLeft size={16} /> Back to Blog
+        </Link>
+      </div>
+    );
+  }
+
+  const headings = extractHeadings(post.content || "");
+
+  // Update title dynamically
+  if (typeof document !== "undefined") {
+    document.title = `${post.title} — Vidyapeeth Blog`;
+  }
+
+  return (
+    <>
+      <ReadingProgressBar />
+      
+      <div className="grain bg-cream min-h-screen pb-32">
+        <EditorialHeader post={post} />
+        <FeaturedImage post={post} />
+        
+        <div className="mx-auto mt-16 max-w-[1100px] px-6">
+          <div className="flex gap-12 lg:gap-16">
+            <aside className="hidden lg:block w-[260px] shrink-0">
+              <StickyTOC headings={headings} />
+            </aside>
+            
+            <div className="min-w-0 flex-1 max-w-[740px]">
+              <MobileTOC headings={headings} />
+              <ArticleContent content={post.content || ""} />
+              <AuthorBlock post={post} />
+            </div>
+          </div>
+        </div>
+        
+        {related.length > 0 && (
+          <ScrollReveal>
+            <div className="mx-auto mt-24 max-w-[1100px] px-6">
+              <h3 className="mb-8 font-display text-2xl font-bold text-navy">Keep Reading</h3>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {related.map(r => <RelatedArticleCard key={r.id} r={r} />)}
+              </div>
+            </div>
+          </ScrollReveal>
+        )}
+        
+        <div className="mx-auto max-w-[1100px] px-6">
+          <NewsletterSection />
+        </div>
+      </div>
+      
+      <DesktopShareBar post={post} />
+      <MobileShareStrip post={post} />
+    </>
+  );
+}
+
+function extractHeadings(content: string) {
+  return content.split("\n").reduce<{ id: string; text: string; level: 2 | 3 }[]>((acc, line) => {
+    if (line.startsWith("## ")) {
+      const text = line.replace("## ", "").trim();
+      acc.push({ id: text.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, ""), text, level: 2 });
+    } else if (line.startsWith("### ")) {
+      const text = line.replace("### ", "").trim();
+      acc.push({ id: text.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, ""), text, level: 3 });
+    }
+    return acc;
+  }, []);
+}
+
+function ReadingProgressBar() {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
+  return (
+    <motion.div
+      className="fixed top-0 left-0 right-0 h-[3px] bg-saffron origin-left z-[9999]"
+      style={{ scaleX }}
+    />
+  );
+}
+
+function EditorialHeader({ post }: { post: Blog }) {
+  const readingTime = Math.max(1, Math.ceil((post.content?.split(" ").length ?? 0) / 200));
+  const dateStr = post.publishedAt?.toDate().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) || "Just now";
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      className="mx-auto max-w-3xl px-6 pt-32 pb-8 text-center"
+    >
+      <div className="mb-8 flex items-center justify-center gap-4">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-saffron">
+          {post.tags?.[0] ?? "Article"}
+        </span>
+        <span className="text-sm font-semibold text-ink/60">
+          {readingTime} min read · {dateStr}
+        </span>
+      </div>
+      
+      <h1 className="mb-6 font-display text-5xl sm:text-6xl font-black leading-[1.06] text-navy">
+        {post.title}
+      </h1>
+      
+      <p className="mx-auto mb-10 max-w-2xl text-xl text-ink/70">
+        {post.content?.split("\n\n").find(p => p.length > 20 && !p.startsWith("#") && !p.startsWith(">"))?.slice(0, 150)}...
+      </p>
+      
+      <div className="flex items-center justify-center gap-4">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-navy text-cream text-xs font-bold overflow-hidden">
+          {typeof post.author === 'object' && post.author.image ? (
+            <img src={post.author.image} alt={post.author.name} className="h-full w-full object-cover" />
+          ) : (
+            (typeof post.author === 'string' ? post.author : post.author?.name)?.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() || "V"
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-sm font-bold text-navy">
+          <span>{typeof post.author === 'string' ? post.author : (post.author?.name || "Vidyapeeth Team")}</span>
+          <span className="text-ink/30">·</span>
+          <span className="text-ink/60">{dateStr}</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function FeaturedImage({ post }: { post: Blog }) {
+  if (!post.featuredImage) return null;
+  return (
+    <div className="mx-auto mt-10 max-w-[1100px] px-6">
+      <motion.div
+        className="overflow-hidden rounded-2xl shadow-[0_20px_60px_-20px_rgba(27,42,74,0.25)]"
+        style={{ aspectRatio: "16/9" }}
+        whileHover={{ scale: 1.01 }}
+        transition={{ duration: 0.4 }}
+      >
+        <img
+          src={post.featuredImage}
+          alt={post.title}
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
+      </motion.div>
+    </div>
+  );
+}
+
+function StickyTOC({ headings }: { headings: ReturnType<typeof extractHeadings> }) {
+  const [activeId, setActiveId] = useState("");
+  useEffect(() => {
+    if (headings.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => { if (entry.isIntersecting) setActiveId(entry.target.id); });
+      },
+      { rootMargin: "-20% 0px -70% 0px" }
+    );
+    headings.forEach((h) => { const el = document.getElementById(h.id); if (el) observer.observe(el); });
+    return () => observer.disconnect();
+  }, [headings]);
+
+  if (headings.length === 0) return null;
+  return (
+    <div className="sticky top-28 space-y-1">
+      <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-navy/40">Contents</p>
+      {headings.map((h) => (
+        <a
+          key={h.id}
+          href={`#${h.id}`}
+          onClick={(e) => { e.preventDefault(); document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth" }); }}
+          className={`block truncate py-1 text-sm transition-all duration-200 ${
+            h.level === 3 ? "pl-4" : "pl-0"
+          } ${
+            activeId === h.id
+              ? "font-semibold text-saffron border-l-2 border-saffron pl-3"
+              : "text-ink/60 hover:text-navy border-l-2 border-transparent hover:border-navy/20"
+          }`}
+        >
+          {h.text}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function MobileTOC({ headings }: { headings: ReturnType<typeof extractHeadings> }) {
+  const [open, setOpen] = useState(false);
+  if (headings.length === 0) return null;
+  return (
+    <div className="mb-8 lg:hidden rounded-xl border border-navy/10 bg-white overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-navy"
+      >
+        Contents <ChevronDown size={16} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="border-t border-navy/10 px-4 py-3 space-y-2">
+          {headings.map((h) => (
+            <a
+              key={h.id}
+              href={`#${h.id}`}
+              onClick={(e) => { e.preventDefault(); setOpen(false); document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth" }); }}
+              className={`block text-sm text-ink/70 hover:text-saffron ${h.level === 3 ? "pl-3" : ""}`}
+            >
+              {h.text}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ArticleContent({ content }: { content: string }) {
+  const blocks = content.split(/\n{2,}/);
+  return (
+    <article className="space-y-0">
+      {blocks.map((block, i) => {
+        const line = block.trim();
+
+        if (line.startsWith("## ")) {
+          const text = line.replace("## ", "");
+          const id = text.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "");
+          return (
+            <h2 key={i} id={id} className="mt-12 mb-4 font-display text-3xl font-black text-navy scroll-mt-28">
+              {text}
+            </h2>
+          );
+        }
+
+        if (line.startsWith("### ")) {
+          const text = line.replace("### ", "");
+          const id = text.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "");
+          return (
+            <h3 key={i} id={id} className="mt-8 mb-3 font-display text-xl font-bold text-navy scroll-mt-28">
+              {text}
+            </h3>
+          );
+        }
+
+        if (line.startsWith("> ")) {
+          return (
+            <blockquote key={i} className="my-8 border-l-4 border-saffron pl-6 py-1">
+              <p className="text-xl font-display font-semibold italic text-navy/80 leading-relaxed">
+                {line.replace("> ", "")}
+              </p>
+            </blockquote>
+          );
+        }
+
+        if (line.startsWith("TIP: ")) {
+          return (
+            <div key={i} className="my-6 flex gap-3 rounded-xl bg-saffron/8 border border-saffron/20 px-5 py-4">
+              <span className="mt-0.5 text-saffron shrink-0">💡</span>
+              <p className="text-sm leading-relaxed text-ink">{line.replace("TIP: ", "")}</p>
+            </div>
+          );
+        }
+
+        if (line.startsWith("NOTE: ")) {
+          return (
+            <div key={i} className="my-6 flex gap-3 rounded-xl bg-navy/5 border border-navy/10 px-5 py-4">
+              <span className="mt-0.5 text-navy shrink-0">📌</span>
+              <p className="text-sm leading-relaxed text-ink">{line.replace("NOTE: ", "")}</p>
+            </div>
+          );
+        }
+
+        return (
+          <p key={i} className={`text-lg leading-[1.85] text-ink ${i === 0 ? "first-letter:text-5xl first-letter:font-black first-letter:font-display first-letter:text-navy first-letter:float-left first-letter:mr-2 first-letter:leading-[0.85]" : "mt-5"}`}>
+            {line}
+          </p>
+        );
+      })}
+    </article>
+  );
+}
+
+function AuthorBlock({ post }: { post: Blog }) {
+  if (!post.author) return null;
+  const authorName = typeof post.author === 'string' ? post.author : post.author.name;
+  const authorImage = typeof post.author === 'object' ? post.author.image : null;
+  const authorBio = typeof post.author === 'object' && post.author.bio ? post.author.bio : "Mentor at Vidyapeeth · Helping students ace boards since 2018.";
+  const authorRole = typeof post.author === 'object' && post.author.role ? post.author.role : "Written by";
+
+  return (
+    <ScrollReveal>
+      <div className="mt-16 flex items-start gap-5 rounded-2xl border border-navy/10 bg-white p-6">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-navy text-cream text-lg font-bold font-display overflow-hidden">
+          {authorImage ? (
+            <img src={authorImage} alt={authorName} className="h-full w-full object-cover" />
+          ) : (
+            authorName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
+          )}
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-saffron">{authorRole}</p>
+          <p className="mt-1 font-display text-lg font-black text-navy">{authorName}</p>
+          <p className="mt-1 text-sm text-ink/70">{authorBio}</p>
+        </div>
+      </div>
+    </ScrollReveal>
+  );
+}
+
+function RelatedArticleCard({ r }: { r: Blog }) {
+  return (
+    <Link
+      to="/blog/$slug"
+      params={{ slug: r.slug }}
+      className="group block rounded-2xl border border-navy/10 bg-white overflow-hidden hover:-translate-y-1 transition-transform duration-300"
+    >
+      {r.featuredImage ? (
+        <div className="aspect-[16/9] overflow-hidden">
+          <img src={r.featuredImage} alt={r.title} loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        </div>
+      ) : (
+        <div className="aspect-[16/9] bg-navy flex items-center justify-center">
+          <span className="font-display text-3xl font-black text-cream/30">{r.tags?.[0] ?? "Blog"}</span>
+        </div>
+      )}
+      <div className="p-5">
+        <span className="text-xs font-bold uppercase tracking-[0.16em] text-saffron">{r.tags?.[0]}</span>
+        <h4 className="mt-2 font-display text-base font-bold text-navy line-clamp-2">{r.title}</h4>
+        <p className="mt-2 text-xs text-ink/60">
+          {Math.max(1, Math.ceil((r.content?.split(" ").length ?? 0) / 200))} min read
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+function NewsletterSection() {
+  return (
+    <ScrollReveal>
+      <section className="mt-20 rounded-3xl bg-navy grain px-8 py-12 text-center text-cream">
+        <span className="text-xs font-bold uppercase tracking-[0.22em] text-saffron">Stay sharp</span>
+        <h3 className="mt-3 font-display text-3xl font-black">Enjoyed this article?</h3>
+        <p className="mt-3 text-cream/70">Get weekly study tips and exam strategies in your inbox.</p>
+        <div className="mx-auto mt-6 flex max-w-sm flex-col gap-3 sm:flex-row">
+          <form className="flex w-full flex-col sm:flex-row gap-3" onSubmit={(e) => { e.preventDefault(); toast.success("You're subscribed! 🎉"); }}>
+            <input
+              type="email"
+              required
+              placeholder="your@email.com"
+              className="flex-1 rounded-full bg-white/10 border border-white/20 px-5 py-3 text-sm text-cream placeholder:text-cream/40 outline-none focus:border-saffron"
+            />
+            <button type="submit" className="rounded-full bg-saffron px-6 py-3 text-sm font-semibold text-cream hover:opacity-90 transition-colors">
+              Subscribe
+            </button>
+          </form>
+        </div>
+      </section>
+    </ScrollReveal>
+  );
+}
+
+function getShareLinks(post: Blog) {
+  const pageUrl = typeof window !== "undefined" ? window.location.href : "";
+  return {
+    whatsappUrl: `https://wa.me/?text=${encodeURIComponent(post.title + " " + pageUrl)}`,
+    linkedinUrl: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(pageUrl)}`,
+    twitterUrl: `https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(pageUrl)}`,
+  };
+}
+
+function DesktopShareBar({ post }: { post: Blog }) {
+  const { whatsappUrl, linkedinUrl, twitterUrl } = getShareLinks(post);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success("Link copied!");
+  };
+
+  return (
+    <div className="hidden lg:flex fixed left-6 top-1/2 -translate-y-1/2 flex-col gap-3 z-40">
+      {[
+        { icon: <Link2 size={16} />, label: "Copy", action: handleCopy },
+        { icon: <ExternalLink size={16} />, label: "WhatsApp", href: whatsappUrl },
+        { icon: <ExternalLink size={16} />, label: "LinkedIn", href: linkedinUrl },
+        { icon: <Twitter size={16} />, label: "X", href: twitterUrl },
+      ].map((item) => (
+        <motion.button
+          key={item.label}
+          whileHover={{ scale: 1.1, x: 2 }}
+          onClick={item.action ?? (() => window.open(item.href, "_blank"))}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white border border-navy/10 text-navy shadow-sm hover:border-saffron hover:text-saffron transition-colors"
+          title={item.label}
+        >
+          {item.icon}
+        </motion.button>
+      ))}
+    </div>
+  );
+}
+
+function MobileShareStrip({ post }: { post: Blog }) {
+  const { whatsappUrl, linkedinUrl, twitterUrl } = getShareLinks(post);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success("Link copied!");
+  };
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-evenly border-t border-navy/10 bg-white/90 p-3 backdrop-blur-md lg:hidden">
+      {[
+        { icon: <Link2 size={20} />, label: "Copy", action: handleCopy },
+        { icon: <ExternalLink size={20} />, label: "WhatsApp", href: whatsappUrl },
+        { icon: <ExternalLink size={20} />, label: "LinkedIn", href: linkedinUrl },
+        { icon: <Twitter size={20} />, label: "X", href: twitterUrl },
+      ].map((item) => (
+        <button
+          key={item.label}
+          onClick={item.action ?? (() => window.open(item.href, "_blank"))}
+          className="flex h-12 w-12 items-center justify-center rounded-full text-navy hover:bg-navy/5 active:scale-95 transition-all"
+          title={item.label}
+        >
+          {item.icon}
+        </button>
+      ))}
+    </div>
+  );
+}

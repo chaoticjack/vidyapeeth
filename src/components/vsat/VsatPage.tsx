@@ -5,7 +5,8 @@ import { useState } from "react";
 import { 
   Trophy, CalendarDays, ShieldCheck, Sparkles, 
   IndianRupee, Loader2, CheckCircle2, 
-  BookOpen, Clock, FileText, MonitorCheck, Calendar
+  BookOpen, Clock, FileText, MonitorCheck, Calendar,
+  Calculator, Microscope, BrainCircuit, BookOpenText
 } from "lucide-react";
 import { toast } from "sonner";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -156,6 +157,36 @@ export function VsatPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Syllabus */}
+      <section id="syllabus" className="py-20 md:py-24 bg-cream relative">
+        <div className="absolute inset-0 border-y border-navy/5 pointer-events-none" />
+        <div className="mx-auto max-w-7xl px-6 relative z-10">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+             <span className="text-xs font-bold uppercase tracking-[0.22em] text-saffron">Syllabus</span>
+             <h2 className="mt-3 font-display text-4xl font-black text-navy md:text-5xl">What to prepare.</h2>
+             <p className="mt-4 text-ink text-lg">The VSAT is designed to test your core fundamentals and problem-solving skills across 4 key subjects.</p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-4">
+             {[
+               { title: "Mathematics", desc: "Algebra, Geometry, Arithmetic & Logic.", icon: Calculator },
+               { title: "Science", desc: "Physics, Chemistry & Biology fundamentals.", icon: Microscope },
+               { title: "Reasoning", desc: "Analytical & Logical thinking puzzles.", icon: BrainCircuit },
+               { title: "English", desc: "Reading comprehension & Grammar.", icon: BookOpenText },
+             ].map(sub => {
+                const Icon = sub.icon;
+                return (
+                <div key={sub.title} className="group rounded-2xl border border-navy/10 bg-white p-8 shadow-[0_10px_30px_-15px_rgba(27,42,74,0.05)] hover:border-saffron/40 hover:-translate-y-1 hover:shadow-[0_20px_40px_-20px_rgba(244,112,11,0.15)] transition-all duration-300">
+                  <div className="h-12 w-12 rounded-xl bg-navy/5 text-navy group-hover:bg-saffron group-hover:text-white flex items-center justify-center mb-6 transition-colors duration-300">
+                     <Icon size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold text-navy mb-2">{sub.title}</h3>
+                  <p className="text-ink/80 text-sm leading-relaxed">{sub.desc}</p>
+                </div>
+             )})}
           </div>
         </div>
       </section>

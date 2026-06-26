@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
+import { getAdminDb } from "../lib/firebase-admin";
 
 // TODO: replace with your project URL once a project name or custom domain is set.
 const BASE_URL = "";
@@ -25,6 +26,22 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/privacy-policy", changefreq: "yearly", priority: "0.3" },
           { path: "/terms", changefreq: "yearly", priority: "0.3" },
         ];
+        try {
+          const adminDb = getAdminDb();
+          const snap = await adminDb
+            .collection("blogs")
+            .where("published", "==", true)
+            .select("slug")
+            .get();
+          snap.docs.forEach((doc: any) => {
+            const slug = doc.data().slug;
+            if (slug) {
+              entries.push({ path: `/blog/${slug}`, changefreq: "monthly", priority: "0.6" });
+            }
+          });
+        } catch (_) {
+          // Firebase Admin not configured yet — static routes still served
+        }
         const urls = entries
           .map(
             (e) =>

@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+// trigger update
 import { ArrowUpRight, Clock, Search, ChevronDown, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { fetchPublishedBlogs, Blog } from "@/lib/firestore";
 
-export const Route = createFileRoute("/blog")({
+export const Route = createFileRoute("/blog/")({
   head: () => ({
     meta: [
       { title: "Blog — Vidyapeeth" },
@@ -390,7 +391,11 @@ function BlogPage() {
       {featuredMatches && (
         <section className="pb-12">
           <div className="mx-auto max-w-6xl px-6">
-            <article className="group grid overflow-hidden rounded-3xl border border-navy/10 bg-card md:grid-cols-2">
+            <Link
+              to="/blog/$slug"
+              params={{ slug: featured.slug || featured.id || "unknown" }}
+              className="group grid overflow-hidden rounded-3xl border border-navy/10 bg-card md:grid-cols-2 transition-shadow hover:shadow-[0_30px_60px_-30px_rgba(27,42,74,0.35)]"
+            >
               <div className="aspect-[4/3] md:aspect-auto">
                 {featured.featuredImage ? (
                   <img src={featured.featuredImage} alt={featured.title} className="w-full h-full object-cover" />
@@ -414,7 +419,7 @@ function BlogPage() {
                   <Clock size={14} /> {featured.minutes || 5} min read
                 </div>
               </div>
-            </article>
+            </Link>
           </div>
         </section>
       )}
@@ -425,9 +430,11 @@ function BlogPage() {
           {filtered.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((p) => (
-                <article
-                  key={p.title}
-                  className="group overflow-hidden rounded-3xl border border-navy/10 bg-card transition-all hover:-translate-y-1 hover:shadow-[0_30px_60px_-30px_rgba(27,42,74,0.35)]"
+                <Link
+                  key={p.id || p.title}
+                  to="/blog/$slug"
+                  params={{ slug: p.slug || p.id || "unknown" }}
+                  className="group block overflow-hidden rounded-3xl border border-navy/10 bg-card transition-all hover:-translate-y-1 hover:shadow-[0_30px_60px_-30px_rgba(27,42,74,0.35)]"
                 >
                   <div className="aspect-[4/3]">
                     {p.featuredImage ? (
@@ -452,7 +459,7 @@ function BlogPage() {
                       </span>
                     </div>
                   </div>
-                </article>
+                </Link>
               ))}
             </div>
           ) : (

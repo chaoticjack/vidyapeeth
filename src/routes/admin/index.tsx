@@ -23,6 +23,8 @@ import { collection, query, orderBy, getDocs, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { StatsCard } from "@/components/admin/StatsCard";
 import { useAdminAnalytics } from "@/hooks/use-admin-analytics";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({ meta: [{ title: "Admin Dashboard — Vidyapeeth" }] }),
@@ -30,9 +32,61 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function AdminDashboard() {
-  const { data: analytics, loading: analyticsLoading } = useAdminAnalytics('year');
+  const { data: analytics, loading: analyticsLoading, error } = useAdminAnalytics('year');
   const [recentDemos, setRecentDemos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleDownloadReport = () => {
+    if (!analytics) return;
+    
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(22);
+    doc.setTextColor(27, 42, 74); // Navy
+    doc.text("Vidyapeeth Analytics Report", 14, 22);
+    
+    // Subtitle
+    doc.setFontSize(11);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    
+    // KPI Table
+    const tableData = [
+      ["Total Students", analytics.kpis.totalUsers.value.toString(), `${analytics.kpis.totalUsers.growth > 0 ? '+' : ''}${analytics.kpis.totalUsers.growth}%`],
+      ["Active Courses", analytics.kpis.coursesPublished.value.toString(), `${analytics.kpis.coursesPublished.growth > 0 ? '+' : ''}${analytics.kpis.coursesPublished.growth}%`],
+      ["Total Enrollments", analytics.kpis.totalEnrollments.value.toString(), `${analytics.kpis.totalEnrollments.growth > 0 ? '+' : ''}${analytics.kpis.totalEnrollments.growth}%`],
+      ["Pending Demos", analytics.kpis.pendingDemoRequests.value.toString(), `${analytics.kpis.pendingDemoRequests.growth > 0 ? '+' : ''}${analytics.kpis.pendingDemoRequests.growth}%`],
+      ["Completed Courses", analytics.kpis.completedCourses.value.toString(), `${analytics.kpis.completedCourses.growth > 0 ? '+' : ''}${analytics.kpis.completedCourses.growth}%`]
+    ];
+
+    autoTable(doc, {
+      startY: 40,
+      head: [["Metric", "Value", "Growth vs Last Period"]],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [27, 42, 74] }, // Navy header
+      styles: { fontSize: 10, cellPadding: 6 },
+    });
+    
+    const finalY = (doc as any).lastAutoTable.finalY || 40;
+    
+    doc.setFontSize(16);
+    doc.setTextColor(27, 42, 74);
+    doc.text("Top Popular Courses", 14, finalY + 15);
+    
+    const courseData = analytics.topCourses.map(c => [c.name, c.enrollments.toString()]);
+    autoTable(doc, {
+      startY: finalY + 20,
+      head: [["Course Name", "Total Enrollments"]],
+      body: courseData,
+      theme: 'striped',
+      headStyles: { fillColor: [244, 112, 11] }, // Saffron header
+      styles: { fontSize: 10, cellPadding: 5 },
+    });
+
+    doc.save(`Vidyapeeth_Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -55,10 +109,20 @@ function AdminDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-black text-navy font-display">Overview Dashboard</h1>
-        <button className="rounded-md bg-white border border-gray-200 px-4 py-2 text-sm font-semibold text-navy hover:bg-gray-50 flex items-center gap-2 shadow-sm">
+        <button 
+          onClick={handleDownloadReport}
+          disabled={!analytics}
+          className="rounded-md bg-white border border-gray-200 px-4 py-2 text-sm font-semibold text-navy hover:bg-gray-50 flex items-center gap-2 shadow-sm disabled:opacity-50"
+        >
           <TrendingUp size={16} /> Download Report
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 font-mono text-sm whitespace-pre-wrap">
+          Error Loading Analytics: {error}
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -87,18 +151,31 @@ function AdminDashboard() {
           </div>
         </div>
 
-        <div className="col-span-1 rounded-2xl bg-white border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-navy mb-4 font-display">Popular Courses</h2>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics?.topCourses.slice(0, 4) || []} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#E5E7EB" />
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
-                <Tooltip cursor={{ fill: '#F3F4F6' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                <Bar dataKey="enrollments" fill="#F4700B" radius={[0, 4, 4, 0]} barSize={24} />
-              </BarChart>
-            </ResponsiveContainer>
+        <div className="col-span-1 rounded-2xl bg-white border border-gray-200 p-6 shadow-sm flex flex-col">
+          <h2 className="text-lg font-bold text-navy mb-6 font-display">Popular Courses</h2>
+          <div className="flex-1 flex flex-col justify-center gap-6">
+            {!analytics?.topCourses || analytics.topCourses.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center">No course data available.</p>
+            ) : (
+              analytics.topCourses.slice(0, 4).map((course: any, idx: number) => {
+                const max = analytics.topCourses[0].enrollments || 1;
+                const width = Math.max((course.enrollments / max) * 100, 2);
+                return (
+                  <div key={idx} className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-navy font-bold truncate pr-4 text-base capitalize">{course.name.replace(/-/g, ' ')}</span>
+                      <span className="text-blue-700 font-black bg-blue-50 px-2.5 py-1 rounded-md">{course.enrollments}</span>
+                    </div>
+                    <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 rounded-full transition-all duration-1000 ease-out" 
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

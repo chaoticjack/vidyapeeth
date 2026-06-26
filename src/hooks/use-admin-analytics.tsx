@@ -108,14 +108,33 @@ async function fetchChartData(
   bucketFormat: string
 ) {
   try {
+    const buckets: Record<string, number> = {};
+    
+    // Pre-fill buckets so empty charts still show the x-axis
+    let curr = new Date(start);
+    if (bucketFormat.includes('yyyy')) {
+      curr.setDate(1);
+      while (curr <= now) {
+        buckets[format(curr, bucketFormat)] = 0;
+        curr.setMonth(curr.getMonth() + 1);
+      }
+    } else {
+      curr = startOfDay(curr);
+      const endOfDayNow = new Date(now);
+      endOfDayNow.setHours(23, 59, 59, 999);
+      while (curr <= endOfDayNow) {
+        buckets[format(curr, bucketFormat)] = 0;
+        curr.setDate(curr.getDate() + 1);
+      }
+    }
+
     const q = query(
       collection(db, colName),
-      where(dateField, '>=', start),
-      where(dateField, '<=', now)
+      where(dateField, '>=', start.toISOString()),
+      where(dateField, '<=', now.toISOString())
     );
     
     const snap = await getDocs(q);
-  const buckets: Record<string, number> = {};
   
   snap.forEach(doc => {
     const data = doc.data();
@@ -132,13 +151,20 @@ async function fetchChartData(
     
     if (dateObj) {
       const bucket = format(dateObj, bucketFormat);
-      buckets[bucket] = (buckets[bucket] || 0) + 1;
+      if (buckets[bucket] !== undefined) {
+        buckets[bucket] += 1;
+      }
     }
   });
 
   return Object.entries(buckets)
     .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => new Date(a.name).getTime() - new Date(b.name).getTime());
+    .sort((a, b) => {
+      // Parse format 'MMM yyyy' or 'MMM dd' back to dates for sorting
+      const dateA = new Date(a.name + (bucketFormat.includes('yyyy') ? '' : ` ${new Date().getFullYear()}`));
+      const dateB = new Date(b.name + (bucketFormat.includes('yyyy') ? '' : ` ${new Date().getFullYear()}`));
+      return dateA.getTime() - dateB.getTime();
+    });
   } catch (e) {
     console.error(`Chart data query failed for ${colName}:`, e);
     return [];
@@ -168,8 +194,9 @@ export function useAdminAnalytics(dateRange: DateRange = '30d') {
           try {
             const t = await getCountFromServer(totalQ);
             totalCount = t.data().count;
-          } catch (e) {
+          } catch (e: any) {
             console.error(`Total KPI query failed for ${colName}:`, e);
+            throw new Error(`Failed to fetch ${colName}: ${e.message}`);
           }
 
           let currentCount = 0;
@@ -205,27 +232,37 @@ export function useAdminAnalytics(dateRange: DateRange = '30d') {
           };
         };
 
+        // Fetch Demos manually to handle legacy documents without 'status' field
+        const allDemosSnap = await getDocs(collection(db, 'demoRegistrations'));
+        let totalDemosCount = 0;
+        let pendingDemosCount = 0;
+        allDemosSnap.forEach(doc => {
+           totalDemosCount++;
+           const d = doc.data();
+           if (!d.status || d.status === 'pending') {
+             pendingDemosCount++;
+           }
+        });
+        const demoRequests = { value: totalDemosCount, growth: 0 };
+        const pendingDemos = { value: pendingDemosCount, growth: 0 };
+
         // Parallelize KPI fetching
         const [
           totalUsers,
           totalEnrollments,
           coursesPublished,
           blogsPublished,
-          demoRequests,
           vsatRegistrations,
-          pendingDemos,
           pendingVsat,
           completedCoursesCount
         ] = await Promise.all([
-          getKpi('users', 'createdAt', [where('role', '==', 'student')], d => d.role === 'student'),
+          getKpi('users', 'createdAt'),
           getKpi('enrollments', 'enrolledAt'),
-          getKpi('courses', 'createdAt', [where('status', '==', 'published')], d => d.status === 'published'),
+          getKpi('courses', 'createdAt', [where('published', '==', true)], d => d.published === true),
           getKpi('blogs', 'createdAt', [where('published', '==', true)], d => d.published === true),
-          getKpi('demoRegistrations', 'createdAt'),
           getKpi('vsatRegistrations', 'createdAt'),
-          getKpi('demoRegistrations', 'createdAt', [where('status', '!=', 'completed')], d => d.status !== 'completed'),
           getKpi('vsatRegistrations', 'createdAt', [where('status', 'in', ['pending', 'registered'])], d => ['pending', 'registered'].includes(d.status)),
-          getKpi('progress', 'lastAccessed', [where('percentage', '==', 100)], d => d.percentage === 100) 
+          getKpi('progress', 'lastActivityAt', [where('percentage', '==', 100)], d => d.percentage === 100) 
         ]);
 
         // Active Students (Unique userIds in enrollments)
@@ -243,9 +280,29 @@ export function useAdminAnalytics(dateRange: DateRange = '30d') {
           growth: 0 
         };
 
-        // Average Completion
-        const progressSnap = await getAggregateFromServer(collection(db, "progress"), { avgCompletion: average('percentage') });
-        const avgCompletionVal = Math.round(progressSnap.data().avgCompletion || 0);
+        // Fetch all progress to calculate overall and per-course averages in memory (avoids composite index)
+        const allProgressSnap = await getDocs(collection(db, "progress"));
+        let totalPercentage = 0;
+        let progressCount = 0;
+        const courseProgressMap: Record<string, { total: number, count: number }> = {};
+        
+        allProgressSnap.forEach(doc => {
+          const d = doc.data();
+          if (typeof d.percentage === 'number') {
+            totalPercentage += d.percentage;
+            progressCount++;
+            
+            if (d.courseId) {
+              if (!courseProgressMap[d.courseId]) {
+                courseProgressMap[d.courseId] = { total: 0, count: 0 };
+              }
+              courseProgressMap[d.courseId].total += d.percentage;
+              courseProgressMap[d.courseId].count++;
+            }
+          }
+        });
+        
+        const avgCompletionVal = progressCount > 0 ? Math.round(totalPercentage / progressCount) : 0;
         
         // Fetch all courses to map names
         const coursesSnap = await getDocs(collection(db, 'courses'));
@@ -262,10 +319,17 @@ export function useAdminAnalytics(dateRange: DateRange = '30d') {
           .sort((a, b) => b.enrollments - a.enrollments)
           .slice(0, 10);
 
-        const courseCompletion = await Promise.all(Object.keys(courseNames).map(async (cId) => {
-          const agg = await getAggregateFromServer(query(collection(db, "progress"), where("courseId", "==", cId)), { avg: average('percentage') });
-          return { name: courseNames[cId], completion: Math.round(agg.data().avg || 0) };
-        }));
+        const courseCompletion = Object.keys(courseProgressMap)
+          .map(cId => {
+            const stats = courseProgressMap[cId];
+            return {
+              name: courseNames[cId] || cId,
+              completion: stats.count > 0 ? Math.round(stats.total / stats.count) : 0
+            };
+          })
+          .filter(c => c.name !== c.id) // Optional: filter out unknown courses if needed
+          .sort((a, b) => b.completion - a.completion)
+          .slice(0, 10);
 
         // Funnel
         const funnel = {

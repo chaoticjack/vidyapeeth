@@ -17,8 +17,10 @@ import {
   Loader2,
   BadgeCheck
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin Panel — Vidyapeeth" }] }),
@@ -39,8 +41,59 @@ const adminLinks = [
 
 function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notifRef = useRef<HTMLDivElement>(null);
+  
   const { user, loading } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    if (!user || !user.isAdmin) return;
+    const q = query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(5));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setNotifications(notifs);
+      
+      const lastChecked = localStorage.getItem('adminLastCheckedNotifs');
+      if (!lastChecked) {
+        setUnreadCount(notifs.length);
+      } else {
+        const lastCheckedTime = parseInt(lastChecked, 10);
+        const unread = notifs.filter((n: any) => {
+          if (n.timestamp?.toDate) {
+            return n.timestamp.toDate().getTime() > lastCheckedTime;
+          } else if (typeof n.timestamp === 'string') {
+            return new Date(n.timestamp).getTime() > lastCheckedTime;
+          }
+          return false; 
+        });
+        setUnreadCount(unread.length);
+      }
+    }, (err) => {
+      console.warn("Notifications error:", err);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleBellClick = () => {
+    setShowNotifications(!showNotifications);
+    if (!showNotifications) {
+      setUnreadCount(0);
+      localStorage.setItem('adminLastCheckedNotifs', Date.now().toString());
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (loading) {
     return (
@@ -133,17 +186,47 @@ function AdminLayout() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="relative text-gray-500 hover:text-navy transition-colors">
-              <Bell size={20} />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-saffron text-[9px] font-bold text-white">
-                3
-              </span>
-            </button>
+            <div className="relative" ref={notifRef}>
+              <button 
+                className="relative text-gray-500 hover:text-navy transition-colors"
+                onClick={handleBellClick}
+              >
+                <Bell size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-saffron text-[9px] font-bold text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 rounded-xl bg-white shadow-lg border border-gray-100 z-50 overflow-hidden">
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h3 className="font-bold text-navy text-sm">Notifications</h3>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-sm text-gray-500">No new notifications</div>
+                    ) : (
+                      notifications.map(notif => (
+                        <div key={notif.id} className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                          <p className="text-sm font-semibold text-navy">{notif.title || 'New Activity'}</p>
+                          <p className="text-xs text-gray-500 mt-1">{notif.text || notif.description}</p>
+                          <p className="text-[10px] text-gray-400 mt-2">
+                            {notif.timestamp?.toDate ? notif.timestamp.toDate().toLocaleString() : 'Just now'}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="h-6 w-px bg-gray-200" />
             <div className="flex items-center gap-3">
               <div className="hidden md:block text-right">
-                <p className="text-sm font-bold text-navy">{user?.fullName || "Admin User"}</p>
-                <p className="text-xs text-gray-500">Super Admin</p>
+                <p className="text-sm font-bold text-navy">Vidyapeeth Admin</p>
+                <p className="text-xs text-gray-500">Management</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-navy text-sm font-bold text-cream">
                 {user?.fullName ? user.fullName.substring(0, 2).toUpperCase() : "AD"}

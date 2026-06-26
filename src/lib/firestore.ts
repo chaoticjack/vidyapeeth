@@ -6,13 +6,47 @@ export interface Blog {
   id: string;
   title: string;
   slug: string;
+  excerpt?: string;
   content: string;
-  author: string;
+  author: string | {
+    name: string;
+    image?: string;
+    bio?: string;
+    role?: string;
+  };
+  category?: string;
+  subcategory?: string;
   tags: string[];
+  difficultyLevel?: string;
+  targetClass?: string;
+  subject?: string;
   featuredImage?: string;
-  status: "draft" | "published";
+  coverAlt?: string;
+  coverCaption?: string;
+  readingTime?: string;
+  status: "draft" | "published" | "scheduled" | "archived";
   published: boolean;
+  featured?: boolean;
+  pinned?: boolean;
+  seo?: {
+    metaTitle?: string;
+    metaDescription?: string;
+    focusKeyword?: string;
+    canonicalUrl?: string;
+    ogTitle?: string;
+    ogDescription?: string;
+    ogImage?: string;
+    twitterTitle?: string;
+    twitterDescription?: string;
+    robotsIndex?: boolean;
+    robotsFollow?: boolean;
+  };
+  versions?: {
+    updatedAt: any;
+    updatedBy: string;
+  }[];
   publishedAt?: any;
+  scheduledAt?: any;
   createdAt?: any;
   updatedAt?: any;
 }
@@ -29,7 +63,11 @@ export async function createBlog(data: Omit<Blog, "id" | "createdAt" | "updatedA
 }
 
 export async function updateBlog(id: string, data: Partial<Blog>) {
-  await updateDoc(doc(db, "blogs", id), { ...data, updatedAt: serverTimestamp() });
+  const updateData: any = { ...data, updatedAt: serverTimestamp() };
+  if (data.status === "published") {
+    updateData.published = true;
+  }
+  await updateDoc(doc(db, "blogs", id), updateData);
 }
 
 export async function deleteBlog(id: string) {
@@ -53,6 +91,18 @@ export async function fetchPublishedBlogs(): Promise<Blog[]> {
     const bTime = b.publishedAt?.toMillis ? b.publishedAt.toMillis() : 0;
     return bTime - aTime;
   });
+}
+
+export async function fetchBlogBySlug(slug: string): Promise<Blog | null> {
+  const q = query(
+    collection(db, "blogs"),
+    where("slug", "==", slug),
+    where("published", "==", true)
+  );
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  const docSnap = snapshot.docs[0];
+  return { id: docSnap.id, ...docSnap.data() } as Blog;
 }
 
 // COURSES
