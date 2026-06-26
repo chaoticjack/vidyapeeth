@@ -40,7 +40,7 @@ function AdminLogin() {
       }
 
       toast.success("Admin login successful");
-      window.location.href = "/admin";
+      navigate({ to: "/admin" });
     } catch (err: any) {
       console.error("Admin login error:", err);
       toast.error(err.message || "Failed to sign in as admin");

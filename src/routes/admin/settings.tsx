@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, doc, updateDoc, setDoc, deleteDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { migrateCoursesToFirestore } from "@/lib/firestore";
 import { db } from "@/lib/firebase";
 import { AdminTable } from "@/components/admin/AdminTable";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
@@ -36,6 +37,9 @@ function AdminSettings() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [removingEmail, setRemovingEmail] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
+
+  // Migration State
+  const [isMigrating, setIsMigrating] = useState(false);
 
   useEffect(() => {
     // Fetch Admins
@@ -131,6 +135,21 @@ function AdminSettings() {
       setIsRemoving(false);
       setIsConfirmOpen(false);
       setRemovingEmail(null);
+    }
+  };
+
+  const handleMigrate = async () => {
+    if (confirm("Are you sure you want to run the database migration? This will import hardcoded courses into Firestore.")) {
+      setIsMigrating(true);
+      try {
+        const result = await migrateCoursesToFirestore();
+        toast.success(`Migration completed. Imported: ${result.imported}, Skipped: ${result.skipped}, Failed: ${result.failed}`);
+      } catch (err) {
+        console.error(err);
+        toast.error("Migration failed");
+      } finally {
+        setIsMigrating(false);
+      }
     }
   };
 
@@ -236,6 +255,25 @@ function AdminSettings() {
                   </div>
                 </form>
               )}
+            </div>
+          </div>
+
+          {/* Data Management Section */}
+          <div className="rounded-2xl border border-navy/10 bg-white shadow-sm overflow-hidden mt-6">
+            <div className="p-6 border-b border-navy/5 flex items-center gap-3">
+              <div className="p-2 bg-purple-50 text-purple-600 rounded-lg"><Save size={20} /></div>
+              <h2 className="text-lg font-bold text-navy font-display">Data Management</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">Run the one-time migration utility to import all hardcoded courses into Firestore. Ensure you only run this once to avoid duplicates.</p>
+              <button 
+                onClick={handleMigrate}
+                disabled={isMigrating}
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-70"
+              >
+                {isMigrating ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                Run Course Migration
+              </button>
             </div>
           </div>
         </div>

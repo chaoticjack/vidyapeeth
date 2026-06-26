@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { subscribeToEnrollments, Enrollment } from "@/lib/firestore";
-import { COURSES_DATA } from "@/data/courses";
+import { subscribeToEnrollments, Enrollment, fetchPublishedCourses } from "@/lib/firestore";
 import { AdminTable } from "@/components/admin/AdminTable";
 import { Eye, X } from "lucide-react";
 
@@ -14,6 +13,7 @@ function AdminEnrollments() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [courseMap, setCourseMap] = useState<Record<string, string>>({});
   
   // Modals
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -24,6 +24,18 @@ function AdminEnrollments() {
       setEnrollments(data);
       setLoading(false);
     });
+
+    async function loadCourses() {
+      const courses = await fetchPublishedCourses();
+      const map: Record<string, string> = {};
+      courses.forEach(c => {
+        map[c.id] = c.name;
+        if (c.slug) map[c.slug] = c.name;
+      });
+      setCourseMap(map);
+    }
+    loadCourses();
+
     return () => unsubscribe();
   }, []);
 
@@ -45,8 +57,8 @@ function AdminEnrollments() {
       </div>
     )},
     { key: "courseId", label: "Course", render: (row: Enrollment) => {
-      const course = COURSES_DATA[row.courseId];
-      return course ? course.title : row.courseId;
+      const title = courseMap[row.courseId];
+      return title || row.courseId;
     }},
     { key: "batchTiming", label: "Batch", render: (row: Enrollment) => (
       <span className="capitalize">{row.batchTiming}</span>
@@ -115,7 +127,7 @@ function AdminEnrollments() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 col-span-2">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Course</p>
-                  <p className="text-sm font-medium text-navy">{COURSES_DATA[selectedEnrollment.courseId]?.title || selectedEnrollment.courseId}</p>
+                  <p className="text-sm font-medium text-navy">{courseMap[selectedEnrollment.courseId] || selectedEnrollment.courseId}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Batch Timing</p>

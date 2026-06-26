@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { getSeoMeta, getCanonicalLink } from "@/lib/seo";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +24,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { logActivity } from "@/lib/activity-logger";
+import { sendDemoNotification } from "@/lib/server-actions";
 
 const schema = z.object({
   studentName: z.string().min(2, "Add a name"),
@@ -34,21 +36,12 @@ type Form = z.infer<typeof schema>;
 
 export const Route = createFileRoute("/demo-class")({
   head: () => ({
-    meta: [
-      { title: "Book a Free Demo Class — Vidyapeeth" },
-      {
-        name: "description",
-        content:
-          "Book a free 60-minute live demo class with a Vidyapeeth mentor. Experience real teaching, solve problems live, and get a written learning plan — no card required.",
-      },
-      { property: "og:title", content: "Book a Free Demo Class — Vidyapeeth" },
-      {
-        property: "og:description",
-        content: "Free 60-minute live class with a real mentor. No card required.",
-      },
-      { property: "og:url", content: "/demo-class" },
-    ],
-    links: [{ rel: "canonical", href: "/demo-class" }],
+    meta: getSeoMeta(
+      "Book a Free Demo Class",
+      "Book a free 60-minute live demo class with a Vidyapeeth mentor. Experience real teaching, solve problems live, and get a written learning plan — no card required.",
+      "/demo-class"
+    ),
+    links: [getCanonicalLink("/demo-class")],
   }),
   component: DemoClassPage,
 });
@@ -151,6 +144,9 @@ function DemoClassPage() {
           description: `You have successfully booked a demo class for ${data.studentName}.`,
         });
       }
+
+      // Trigger Email & Admin Notifications securely on the server
+      sendDemoNotification({ data: { ...data, bookingId: docRef.id } }).catch(console.error);
 
       toast.success("Demo booked. We'll WhatsApp you within 4 hours.");
       setConfirmation({

@@ -28,19 +28,62 @@ export const Route = createFileRoute("/sitemap.xml")({
         ];
         try {
           const adminDb = getAdminDb();
-          const snap = await adminDb
+          
+          // Fetch Published Blogs
+          const blogsSnap = await adminDb
             .collection("blogs")
             .where("published", "==", true)
-            .select("slug")
+            .select("slug", "updatedAt", "createdAt")
             .get();
-          snap.docs.forEach((doc: any) => {
-            const slug = doc.data().slug;
+          blogsSnap.docs.forEach((doc: any) => {
+            const data = doc.data();
+            const slug = data.slug;
             if (slug) {
-              entries.push({ path: `/blog/${slug}`, changefreq: "monthly", priority: "0.6" });
+              entries.push({ 
+                path: `/blog/${slug}`, 
+                changefreq: "monthly", 
+                priority: "0.8",
+              });
             }
           });
-        } catch (_) {
-          // Firebase Admin not configured yet — static routes still served
+
+          // Fetch Active Courses
+          const coursesSnap = await adminDb
+            .collection("courses")
+            .where("status", "==", "active")
+            .select("slug", "updatedAt", "createdAt")
+            .get();
+          coursesSnap.docs.forEach((doc: any) => {
+            const data = doc.data();
+            const slug = data.slug;
+            if (slug) {
+              entries.push({ 
+                path: `/courses/${slug}`, 
+                changefreq: "weekly", 
+                priority: "0.9" 
+              });
+            }
+          });
+
+          // Fetch Categories
+          const categoriesSnap = await adminDb
+            .collection("categories")
+            .select("slug")
+            .get();
+          categoriesSnap.docs.forEach((doc: any) => {
+            const data = doc.data();
+            const slug = data.slug;
+            if (slug) {
+              entries.push({ 
+                path: `/courses/category/${slug}`, 
+                changefreq: "monthly", 
+                priority: "0.7" 
+              });
+            }
+          });
+
+        } catch (error) {
+          console.error("Failed to generate dynamic sitemap entries:", error);
         }
         const urls = entries
           .map(

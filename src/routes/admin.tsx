@@ -15,7 +15,11 @@ import {
   X,
   ShieldAlert,
   Loader2,
-  BadgeCheck
+  BadgeCheck,
+  Library,
+  ListTree,
+  Video,
+  Mail
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,11 +35,16 @@ const adminLinks = [
   { to: "/admin", icon: <LayoutDashboard size={18} />, label: "Dashboard", exact: true },
   { to: "/admin/students", icon: <Users size={18} />, label: "Students" },
   { to: "/admin/teachers", icon: <GraduationCap size={18} />, label: "Teachers" },
+  { to: "/admin/categories", icon: <Library size={18} />, label: "Categories" },
+  { to: "/admin/subjects", icon: <BookOpen size={18} />, label: "Subjects" },
   { to: "/admin/courses", icon: <BookOpen size={18} />, label: "Courses" },
+  { to: "/admin/modules", icon: <ListTree size={18} />, label: "Modules" },
+  { to: "/admin/lessons", icon: <Video size={18} />, label: "Lessons" },
   { to: "/admin/enrollments", icon: <BadgeCheck size={18} />, label: "Enrollments" },
   { to: "/admin/demo-requests", icon: <CalendarCheck2 size={18} />, label: "Demo Requests" },
   { to: "/admin/blogs", icon: <FileText size={18} />, label: "Blog Management" },
   { to: "/admin/analytics", icon: <BarChart3 size={18} />, label: "Reports & Analytics" },
+  { to: "/admin/marketing/newsletter", icon: <Mail size={18} />, label: "Marketing & Newsletter" },
   { to: "/admin/settings", icon: <Settings size={18} />, label: "Settings" },
 ];
 
@@ -51,7 +60,7 @@ function AdminLayout() {
 
   useEffect(() => {
     if (!user || !user.isAdmin) return;
-    const q = query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(5));
+    const q = query(collection(db, 'adminNotifications'), orderBy('timestamp', 'desc'), limit(5));
     const unsubscribe = onSnapshot(q, (snap) => {
       const notifs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setNotifications(notifs);

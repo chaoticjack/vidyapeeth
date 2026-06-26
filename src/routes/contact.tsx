@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { getSeoMeta, getCanonicalLink } from "@/lib/seo";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { MapPin, Mail, Phone, Clock, Loader2, ArrowUpRight } from "lucide-react";
+import { sendContactNotification } from "@/lib/server-actions";
 import { toast } from "sonner";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -17,21 +19,12 @@ type Form = z.infer<typeof schema>;
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
-    meta: [
-      { title: "Contact Us — Vidyapeeth" },
-      {
-        name: "description",
-        content:
-          "Reach the Vidyapeeth team. We're open 24×7 for student and parent queries. Office in Vikaspuri, Delhi.",
-      },
-      { property: "og:title", content: "Contact Us — Vidyapeeth" },
-      {
-        property: "og:description",
-        content: "Talk to the Vidyapeeth team. We're 24×7 open for you.",
-      },
-      { property: "og:url", content: "/contact" },
-    ],
-    links: [{ rel: "canonical", href: "/contact" }],
+    meta: getSeoMeta(
+      "Contact Us",
+      "Reach the Vidyapeeth team. We're open 24×7 for student and parent queries. Office in Vikaspuri, Delhi.",
+      "/contact"
+    ),
+    links: [getCanonicalLink("/contact")],
   }),
   component: ContactPage,
 });
@@ -50,6 +43,9 @@ function ContactPage() {
         ...values,
         createdAt: serverTimestamp(),
       });
+
+      sendContactNotification({ data: values }).catch(console.error);
+
       toast.success("Message received. We'll reply within 4 working hours.");
       reset();
     } catch (err) {

@@ -1,19 +1,30 @@
 import { Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { useMemo, useState } from "react";
-import { courses } from "@/data/home";
+import { useMemo, useState, useEffect } from "react";
+import { fetchPublishedCourses, type Course } from "@/lib/firestore";
 import { ScrollReveal } from "@/components/shared/ScrollReveal";
 
-const TABS = ["All", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10"] as const;
-type Tab = (typeof TABS)[number];
-
 export function CourseShowcase() {
-  const [tab, setTab] = useState<Tab>("All");
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<string>("All");
+
+  useEffect(() => {
+    fetchPublishedCourses().then(data => {
+      const featured = data
+        .filter(c => c.featured !== false)
+        .sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99));
+      setCourses(featured);
+      setLoading(false);
+    });
+  }, []);
+
+  const classTabs = ["All", ...Array.from(new Set(courses.map(c => `Class ${c.classLevel}`))).sort()];
 
   const filtered = useMemo(
-    () => (tab === "All" ? courses : courses.filter((c) => c.classLevel === tab)),
-    [tab],
+    () => (tab === "All" ? courses : courses.filter((c) => `Class ${c.classLevel}` === tab)),
+    [tab, courses]
   );
 
   return (
@@ -48,7 +59,7 @@ export function CourseShowcase() {
           aria-label="Filter courses by class"
           className="-mx-5 mt-8 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-2 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible hide-scrollbar"
         >
-          {TABS.map((t) => {
+          {classTabs.map((t) => {
             const active = tab === t;
             return (
               <button
@@ -77,11 +88,11 @@ export function CourseShowcase() {
             <AnimatePresence mode="popLayout">
               {filtered.map((c, i) => (
                 <ScrollReveal 
-                  key={c.slug} 
+                  key={c.slug || c.id} 
                   delay={Math.min(i * 0.05, 0.25)} 
                   className="flex h-full"
                 >
-                  <CourseCard course={c} />
+                  <CourseCard course={c} index={i} />
                 </ScrollReveal>
               ))}
             </AnimatePresence>
@@ -105,8 +116,8 @@ export function CourseShowcase() {
   );
 }
 
-function CourseCard({ course }: { course: (typeof courses)[number] }) {
-  const isSaffron = course.accent === "saffron";
+function CourseCard({ course, index = 0 }: { course: Course, index?: number }) {
+  const isSaffron = index % 2 !== 0; // Use alternating colors
   return (
     <motion.article
       layout
@@ -128,16 +139,16 @@ function CourseCard({ course }: { course: (typeof courses)[number] }) {
             isSaffron ? "bg-cream text-saffron" : "bg-navy text-cream"
           }`}
         >
-          {course.classLevel}
+          Class {course.classLevel}
         </div>
         <h3 className="mt-5 font-display text-2xl font-black leading-tight md:text-[26px] transition-colors">
-          {course.title}
+          {course.name}
         </h3>
         <p className={`mt-3 text-sm leading-relaxed ${isSaffron ? "text-cream/90" : "text-ink"}`}>
-          {course.blurb}
+          {course.description}
         </p>
         <ul className="mt-5 flex flex-wrap gap-1.5">
-          {course.subjects.map((s) => (
+          {(course.subject || "").split("·").map(s => s.trim()).filter(Boolean).map((s) => (
             <li
               key={s}
               className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
@@ -154,19 +165,21 @@ function CourseCard({ course }: { course: (typeof courses)[number] }) {
           <p className={`text-xs ${isSaffron ? "text-cream/70" : "text-ink/70"}`}>From</p>
           <p className="font-display text-2xl font-black">
             ₹{course.price.toLocaleString("en-IN")}
-            <span
-              className={`ml-2 align-middle text-sm font-medium line-through ${
-                isSaffron ? "text-cream/55" : "text-ink/50"
-              }`}
-            >
-              ₹{course.original.toLocaleString("en-IN")}
-            </span>
+            {(course.salePrice ?? 0) > 0 && (
+              <span
+                className={`ml-2 align-middle text-sm font-medium line-through ${
+                  isSaffron ? "text-cream/55" : "text-ink/50"
+                }`}
+              >
+                ₹{course.salePrice?.toLocaleString("en-IN")}
+              </span>
+            )}
           </p>
         </div>
         <Link
           to="/courses/$slug"
-          params={{ slug: course.slug }}
-          aria-label={`View ${course.title}`}
+          params={{ slug: course.slug || course.id }}
+          aria-label={`View ${course.name}`}
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
             isSaffron ? "bg-cream text-saffron hover:bg-white" : "bg-navy text-cream hover:bg-saffron hover:border-transparent"
           }`}

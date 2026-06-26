@@ -68,7 +68,8 @@ export function useDashboardData(userId?: string) {
     const coursesUnsub = onSnapshot(collection(db, "courses"), (snapshot) => {
       const coursesMap = new Map<string, CourseData>();
       snapshot.forEach(doc => {
-        coursesMap.set(doc.id, { id: doc.id, ...doc.data() } as CourseData);
+        const data = doc.data();
+        coursesMap.set(doc.id, { id: doc.id, title: data.name || data.title, ...data } as CourseData);
       });
 
       // Listen to progress
@@ -97,43 +98,64 @@ export function useDashboardData(userId?: string) {
         setActiveCourses(active);
       });
 
+      let liveClassesUnsub: any = null;
+
       // Listen to enrollments (for live classes and count)
       const qEnrollments = query(collection(db, "enrollments"), where("userId", "==", userId), where("status", "==", "active"));
       const enrollUnsub = onSnapshot(qEnrollments, (enrollSnap) => {
         setEnrolledCount(enrollSnap.size);
-        const upcoming: UpcomingLiveClassData[] = [];
+        
+        const enrolledCourseIds: string[] = [];
         enrollSnap.forEach(doc => {
-          const data = doc.data();
-          const course = coursesMap.get(data.courseId);
-          if (course && course.upcomingLiveClass) {
-            let dateStr = "Scheduled";
-            let timeStr = "";
-            let link = course.liveClassSchedule?.zoomLink || "";
+          enrolledCourseIds.push(doc.data().courseId);
+        });
 
-            if (typeof course.upcomingLiveClass === 'string') {
-                const dateObj = new Date(course.upcomingLiveClass);
-                const today = new Date();
-                if (dateObj.getDate() === today.getDate() && dateObj.getMonth() === today.getMonth() && dateObj.getFullYear() === today.getFullYear()) {
+        if (liveClassesUnsub) {
+          liveClassesUnsub();
+          liveClassesUnsub = null;
+        }
+
+        if (enrolledCourseIds.length > 0) {
+          const qLive = query(collection(db, "liveClasses"), where("status", "==", "upcoming"));
+          liveClassesUnsub = onSnapshot(qLive, (liveSnap) => {
+            const upcoming: UpcomingLiveClassData[] = [];
+            liveSnap.forEach(doc => {
+              const data = doc.data();
+              if (enrolledCourseIds.includes(data.courseId)) {
+                const course = coursesMap.get(data.courseId);
+                
+                let dateStr = "Scheduled";
+                let timeStr = data.startTime || "";
+                
+                if (data.date) {
+                  const dateObj = new Date(data.date);
+                  const today = new Date();
+                  if (dateObj.getDate() === today.getDate() && dateObj.getMonth() === today.getMonth() && dateObj.getFullYear() === today.getFullYear()) {
                     dateStr = "Today";
-                } else {
+                  } else {
                     dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  }
                 }
                 
-                timeStr = dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                if (course.liveClassSchedule?.duration) {
-                     timeStr += ` (${course.liveClassSchedule.duration} mins)`;
+                if (data.endTime) {
+                  timeStr += ` - ${data.endTime}`;
                 }
-            }
-            upcoming.push({
-               id: course.id,
-               title: course.title,
-               date: dateStr,
-               time: timeStr,
-               zoomLink: link
+                
+                upcoming.push({
+                  id: doc.id,
+                  title: `${course?.title || 'Course'}: ${data.title}`,
+                  date: dateStr,
+                  time: timeStr,
+                  zoomLink: data.meetingLink || ""
+                });
+              }
             });
-          }
-        });
-        setLiveClasses(upcoming);
+            // Sort by date (you might want to convert date back to Date object for robust sorting, but strings might be fine for now)
+            setLiveClasses(upcoming);
+          });
+        } else {
+          setLiveClasses([]);
+        }
       });
 
       // Listen to activities. We sort client-side to avoid requiring composite indexes initially.
@@ -178,6 +200,7 @@ export function useDashboardData(userId?: string) {
         progUnsub();
         enrollUnsub();
         actUnsub();
+        if (liveClassesUnsub) liveClassesUnsub();
       };
     }, (err) => {
       console.error("Failed to fetch courses:", err);

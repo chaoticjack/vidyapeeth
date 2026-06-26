@@ -1,2 +1,24 @@
 User-agent: *
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /login
+Disallow: /register
+Disallow: /onboarding
+Disallow: /api/*
+Disallow: /payment/*
+Disallow: /settings/*
+Disallow: /private/*
+Disallow: /firebase/*
+Disallow: /auth/*
+
 Allow: /
+Allow: /about
+Allow: /courses
+Allow: /blog
+Allow: /contact
+Allow: /demo
+Allow: /vsat
+
+Sitemap: https://vidyapeeth.in/sitemap.xml

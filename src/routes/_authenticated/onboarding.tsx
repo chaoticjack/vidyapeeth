@@ -35,6 +35,7 @@ function OnboardingPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [transitionIndex, setTransitionIndex] = useState(0);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const {
     register,
@@ -75,7 +76,7 @@ function OnboardingPage() {
       }, 400); // 400ms per text for ~2s total
 
       const timeout = setTimeout(() => {
-        window.location.href = "/dashboard";
+        navigate({ to: "/dashboard" });
       }, 2500);
 
       return () => {

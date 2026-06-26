@@ -1,4 +1,4 @@
-import admin from "firebase-admin";
+import * as admin from "firebase-admin";
 
 const getFirebaseAdmin = () => {
   if (admin.apps.length > 0) {

@@ -48,9 +48,34 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    match /blogs/{document=**} {
-      allow create, update, delete: if isAdmin();
+    match /courseCategories/{document=**} {
       allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /subjects/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /modules/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /lessons/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /liveClasses/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /blogs/{document=**} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow write: if isAdmin();
     }
 
     match /teachers/{document=**} {
@@ -83,10 +108,7 @@ service cloud.firestore {
       allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
       allow delete: if isAdmin();
     }
-    match /blogs/{document=**} {
-      allow read: if resource.data.published == true || isAdmin();
-      allow write: if isAdmin();
-    }
+
     
     match /{document=**} {
       allow read, write: if false;

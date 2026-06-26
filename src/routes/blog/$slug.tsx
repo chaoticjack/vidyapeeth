@@ -1,4 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { getSeoMeta, getCanonicalLink, siteUrl } from "@/lib/seo";
 import { useEffect, useState } from "react";
 import { motion, useScroll, useSpring } from "framer-motion";
 import {
@@ -9,13 +12,72 @@ import { toast } from "sonner";
 import { fetchBlogBySlug, fetchPublishedBlogs, type Blog } from "@/lib/firestore";
 import { ScrollReveal } from "@/components/shared/ScrollReveal";
 
+const fetchBlogSeo = createServerFn({ method: "GET" })
+  .validator((slug: string) => slug)
+  .handler(async ({ data: slug }) => {
+    try {
+      const adminDb = getAdminDb();
+      const snap = await adminDb.collection("blogs").where("slug", "==", slug).limit(1).get();
+      if (snap.empty) return null;
+      const data = snap.docs[0].data();
+      return { 
+        title: data.title, 
+        excerpt: data.excerpt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : undefined,
+        author: data.authorName || "Vidyapeeth Team",
+        image: data.coverImage
+      };
+    } catch (e) {
+      return null;
+    }
+  });
+
 export const Route = createFileRoute("/blog/$slug")({
-  head: () => ({
-    meta: [
-      { title: "Blog — Vidyapeeth" },
-      { name: "description", content: "Read this article on the Vidyapeeth Blog." },
-    ],
-  }),
+  loader: async ({ params }) => {
+    return await fetchBlogSeo({ data: params.slug });
+  },
+  head: ({ loaderData, params }) => {
+    const slug = params.slug;
+    const urlPath = `/blog/${slug}`;
+    if (!loaderData) {
+      return {
+        meta: getSeoMeta("Blog Not Found", "This article could not be found.", urlPath),
+        links: [getCanonicalLink(urlPath)],
+      };
+    }
+    const { title, excerpt, updatedAt, author, image } = loaderData;
+    const meta = getSeoMeta(title, excerpt || `Read ${title} on Vidyapeeth Blog.`, urlPath);
+    if (image) {
+      meta.push({ property: "og:image", content: image });
+      meta.push({ name: "twitter:image", content: image });
+    }
+    return {
+      meta,
+      links: [getCanonicalLink(urlPath)],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: title,
+            image: image ? [image] : [],
+            datePublished: updatedAt,
+            dateModified: updatedAt,
+            author: [{
+              "@type": "Person",
+              name: author,
+            }],
+            publisher: {
+              "@type": "Organization",
+              name: "Vidyapeeth",
+              url: siteUrl,
+            },
+          }),
+        },
+      ],
+    };
+  },
   component: BlogPostPage,
 });
 

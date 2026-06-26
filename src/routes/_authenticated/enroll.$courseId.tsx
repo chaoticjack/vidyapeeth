@@ -1,27 +1,44 @@
-import { createFileRoute, useNavigate, notFound, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { COURSES_DATA } from "@/data/courses";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { enrollCourse, checkIsEnrolled } from "@/lib/firestore";
+import { enrollCourse, checkIsEnrolled, fetchCourseBySlug, type Course } from "@/lib/firestore";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { logActivity } from "@/lib/activity-logger";
 import { toast } from "sonner";
-import { BookOpen, CheckCircle2, ChevronRight, Home, CreditCard } from "lucide-react";
+import { BookOpen, CheckCircle2, ChevronRight, Home, CreditCard, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/enroll/$courseId")({
-  loader: ({ params }) => {
-    const course = COURSES_DATA[params.courseId];
-    if (!course) {
-      throw notFound();
-    }
-    return { course, courseId: params.courseId };
-  },
   component: EnrollCoursePage,
 });
 
 function EnrollCoursePage() {
-  const { course, courseId } = Route.useLoaderData();
+  const { courseId } = Route.useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const docRef = doc(db, "courses", courseId);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          setCourse({ id: snap.id, ...snap.data() } as Course);
+        } else {
+          const bySlug = await fetchCourseBySlug(courseId);
+          setCourse(bySlug);
+        }
+      } catch (err) {
+        console.error("Failed to load course:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [courseId]);
 
   const [batchTiming, setBatchTiming] = useState<"morning" | "evening">("evening");
   const [studentName, setStudentName] = useState(user?.fullName || "");
@@ -69,10 +86,7 @@ function EnrollCoursePage() {
       }
 
       // Parse amount from string like "₹24,999" or "Free"
-      let numericAmount = 0;
-      if (course.price.toLowerCase() !== "free") {
-         numericAmount = Number(course.price.replace(/[^0-9.-]+/g, ""));
-      }
+      let numericAmount = course?.price || 0;
 
       // 1. Create order
       const orderResponse = await fetch("/api/payments/create-order", {
@@ -80,7 +94,7 @@ function EnrollCoursePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courseId,
-          courseName: course.title,
+          courseName: course?.name || 'Course',
           amount: numericAmount,
           userId: user.id
         })
@@ -98,7 +112,7 @@ function EnrollCoursePage() {
         amount: orderData.amount,
         currency: orderData.currency,
         name: "Vidyapeeth",
-        description: `Enrollment for ${course.title}`,
+        description: `Enrollment for ${course?.name || 'Course'}`,
         order_id: orderData.orderId,
         handler: async function (response: any) {
           try {
@@ -130,8 +144,8 @@ function EnrollCoursePage() {
             await logActivity({
               userId: user.id,
               type: "enrollment",
-              title: `Enrolled in ${course.title}`,
-              description: `You have successfully enrolled in ${course.title}.`,
+              title: `Enrolled in ${course?.name || 'Course'}`,
+              description: `You have successfully enrolled in ${course?.name || 'Course'}.`,
               courseId: courseId,
               metadata: { batchTiming, amount: numericAmount }
             });
@@ -169,6 +183,17 @@ function EnrollCoursePage() {
   };
 
   if (!user) return null;
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center bg-cream"><Loader2 className="h-8 w-8 animate-spin text-navy" /></div>;
+  }
+  if (!course) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-cream">
+        <h1 className="font-display text-4xl font-black text-navy">Course not found</h1>
+        <Link to="/courses" className="mt-4 text-saffron hover:underline">Back to courses</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-cream min-h-screen pt-32 pb-24 md:pt-36">
@@ -189,7 +214,7 @@ function EnrollCoursePage() {
           <div className="md:col-span-3 space-y-6">
             <div>
               <h1 className="font-display text-4xl font-black text-navy md:text-5xl">Complete Enrollment</h1>
-              <p className="mt-2 text-ink/70">You are just one step away from joining {course.title}.</p>
+              <p className="mt-2 text-ink/70">You are just one step away from joining {course.name}.</p>
             </div>
 
             <form onSubmit={handleProceedToPayment} className="rounded-3xl border border-navy/10 bg-white p-6 shadow-sm space-y-5">
@@ -260,30 +285,30 @@ function EnrollCoursePage() {
               <h3 className="font-display text-xl font-bold mb-4">Course Summary</h3>
               
               <div className="mb-6 rounded-2xl bg-white/5 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-saffron mb-1">{course.grade}</p>
-                <p className="font-display text-lg font-bold leading-tight mb-2">{course.title}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-saffron mb-1">Class {course.classLevel}</p>
+                <p className="font-display text-lg font-bold leading-tight mb-2">{course.name}</p>
                 <div className="flex items-center gap-1.5 text-xs opacity-80">
                   <BookOpen size={14} />
-                  <span>{course.syllabus.length} Core Subjects</span>
+                  <span>{(course.subject || "").split('·').length} Core Subjects</span>
                 </div>
               </div>
 
               <div className="space-y-3 border-b border-cream/10 pb-6 mb-6">
                 <div className="flex justify-between text-sm">
                   <span className="opacity-70">Duration</span>
-                  <span className="font-semibold">{course.duration}</span>
+                  <span className="font-semibold">{course.duration || "1 Year"}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="opacity-70">Batch Size</span>
-                  <span className="font-semibold">{course.batchSize}</span>
+                  <span className="font-semibold">Max 30 Students</span>
                 </div>
               </div>
 
               <div className="flex items-end justify-between mb-2">
                 <span className="text-sm opacity-70">Total Fee</span>
                 <div className="text-right">
-                  <p className="text-xs line-through opacity-50">{course.original}</p>
-                  <p className="font-display text-2xl font-black text-saffron">{course.price}</p>
+                  <p className="text-xs line-through opacity-50">{(course.salePrice ?? 0) > 0 ? `₹${course.salePrice?.toLocaleString('en-IN')}` : ""}</p>
+                  <p className="font-display text-2xl font-black text-saffron">{course.price ? `₹${course.price.toLocaleString('en-IN')}` : "Free"}</p>
                 </div>
               </div>
               
@@ -303,12 +328,12 @@ function EnrollCoursePage() {
               <CreditCard size={32} />
             </div>
             <h3 className="text-center font-display text-2xl font-bold text-navy mb-2">Secure Checkout</h3>
-            <p className="text-center text-sm text-ink/70 mb-6">You are paying for {course.title}</p>
+            <p className="text-center text-sm text-ink/70 mb-6">You are paying for {course.name}</p>
             
             <div className="rounded-xl bg-navy/5 p-4 mb-6">
               <div className="flex justify-between items-center text-navy font-bold text-lg">
                 <span>Total Amount:</span>
-                <span>{course.price}</span>
+                <span>{course.price ? `₹${course.price.toLocaleString('en-IN')}` : "Free"}</span>
               </div>
             </div>
 
@@ -321,7 +346,7 @@ function EnrollCoursePage() {
                 {isProcessing ? (
                   <>Processing Payment...</>
                 ) : (
-                  <>Pay {course.price} & Enroll</>
+                  <>Pay {course.price ? `₹${course.price.toLocaleString('en-IN')}` : "Free"} & Enroll</>
                 )}
               </button>
               <button

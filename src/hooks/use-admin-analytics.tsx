@@ -323,6 +323,7 @@ export function useAdminAnalytics(dateRange: DateRange = '30d') {
           .map(cId => {
             const stats = courseProgressMap[cId];
             return {
+              id: cId,
               name: courseNames[cId] || cId,
               completion: stats.count > 0 ? Math.round(stats.total / stats.count) : 0
             };

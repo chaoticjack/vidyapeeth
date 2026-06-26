@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { getSeoMeta, getCanonicalLink } from "@/lib/seo";
 import { ArrowUpRight, Trophy, Sparkles, BookOpen, Target, Clock, GraduationCap, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
-import { COURSES_DATA, type CourseData } from "@/data/courses";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,21 +9,12 @@ import { ScrollReveal } from "@/components/shared/ScrollReveal";
 
 export const Route = createFileRoute("/courses/")({
   head: () => ({
-    meta: [
-      { title: "Academic Courses — Vidyapeeth" },
-      {
-        name: "description",
-        content:
-          "Browse Vidyapeeth's academic courses for Class 6–12 students. Live mentor-led classes, doubt rooms and weekly tests.",
-      },
-      { property: "og:title", content: "Academic Courses — Vidyapeeth" },
-      {
-        property: "og:description",
-        content: "Live mentor-led courses for Class 6–12 students.",
-      },
-      { property: "og:url", content: "/courses" },
-    ],
-    links: [{ rel: "canonical", href: "/courses" }],
+    meta: getSeoMeta(
+      "Academic Courses",
+      "Browse Vidyapeeth's academic courses for Class 6–12 students. Live mentor-led classes, doubt rooms and weekly tests.",
+      "/courses"
+    ),
+    links: [getCanonicalLink("/courses")],
   }),
   component: CoursesPage,
 });
@@ -60,16 +51,12 @@ function CoursesPage() {
     return () => unsubscribe();
   }, []);
 
-  const hardcodedCourses = Object.values(COURSES_DATA);
-  const allCourses = [...hardcodedCourses, ...dbCourses];
+  const classLevels = ["All", ...Array.from(new Set(dbCourses.map((c: any) => String(c.classLevel)))).sort()];
   
-  const classLevels = ["All", "6", "7", "8", "9", "10", "11", "12"];
-  
-  // Filter by matching classLevel directly or checking if the grade string includes the class number
   const filteredCourses = selectedClass === "All" 
-    ? allCourses 
-    : allCourses.filter(
-        (c: any) => String(c.classLevel) === selectedClass || String(c.grade || "").includes(selectedClass)
+    ? dbCourses 
+    : dbCourses.filter(
+        (c: any) => String(c.classLevel) === selectedClass
       );
 
   return (
@@ -166,7 +153,7 @@ function CoursesPage() {
                     delay={Math.min(i * 0.05, 0.25)} 
                     className="flex"
                   >
-                    <CourseCard course={c} />
+                    <CourseCard course={c} index={i} />
                   </ScrollReveal>
                 ))}
               </AnimatePresence>
@@ -211,16 +198,20 @@ function CoursesPage() {
                       className="flex w-full items-center justify-between gap-4 p-6 text-left md:p-7"
                     >
                       <div className="flex items-center gap-4">
-                        <span className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-display text-sm font-black text-cream ${
+                        <div className={`flex shrink-0 items-center justify-center rounded-xl font-display font-black text-cream ${
                           index % 2 === 0 ? "bg-navy" : "bg-saffron"
+                        } ${
+                          (c.grade || c.classLevel || "").replace("Class ", "").length > 3 
+                            ? "px-3 py-2 text-[11px] uppercase tracking-widest text-center max-w-[120px] leading-tight" 
+                            : "h-12 w-12 text-sm"
                         }`}>
                           {(c.grade || c.classLevel || "").replace("Class ", "")}
-                        </span>
+                        </div>
                         <div>
                           <h3 className="font-display text-lg font-bold text-navy md:text-xl">
-                            {c.grade || `Class ${c.classLevel}`} — {c.title || c.name}
+                            {c.name}
                           </h3>
-                          <p className="mt-0.5 text-sm text-ink/70">{c.subjectsSummary || c.subject}</p>
+                          <p className="mt-0.5 text-sm text-ink/70">{c.subject}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
@@ -302,7 +293,7 @@ function CoursesPage() {
                                 <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">Price</p>
                                 <p className="mt-1 text-sm text-navy">
                                   <span className="font-display text-lg font-black">{c.price ? `₹${c.price.toLocaleString('en-IN')}` : "Free"}</span>
-                                  {c.original && <span className="ml-2 text-ink/50 line-through">{c.original}</span>}
+                                  {c.salePrice > 0 && <span className="ml-2 text-ink/50 line-through">₹{c.salePrice.toLocaleString('en-IN')}</span>}
                                 </p>
                               </div>
                               <Link
@@ -332,9 +323,9 @@ function CoursesPage() {
   );
 }
 
-function CourseCard({ course }: { course: any }) {
-  const isSaffron = course.theme === "saffron" || course.classLevel === "9" || course.classLevel === "11";
-  const subjects = (course.subjectsSummary || course.subject || "All Subjects").split(" · ");
+function CourseCard({ course, index = 0 }: { course: any, index?: number }) {
+  const isSaffron = index % 2 !== 0;
+  const subjects = (course.subject || "All Subjects").split("·").map((s: string) => s.trim()).filter(Boolean);
   
   return (
     <motion.article
@@ -345,36 +336,25 @@ function CourseCard({ course }: { course: any }) {
       transition={{ type: "spring", stiffness: 240, damping: 24 }}
       data-cursor="lift"
       whileHover={{ y: -8, scale: 1.02 }}
-      className={`group relative flex h-full min-w-0 w-full flex-col justify-between overflow-hidden rounded-3xl border transition-all duration-300 shadow-sm hover:shadow-xl ${
+      className={`group relative flex h-full min-w-0 w-full flex-col justify-between overflow-hidden rounded-3xl border p-6 transition-all duration-300 sm:p-7 shadow-sm hover:shadow-xl ${
         isSaffron
           ? "border-saffron/30 bg-saffron text-cream hover:bg-[#E66100] shadow-saffron/20"
           : "border-navy/10 bg-card text-navy hover:border-navy shadow-navy/5"
       }`}
     >
-      {/* Thumbnail Area for Admin Courses */}
-      {course.thumbnail && (
-        <div className="w-full h-40 overflow-hidden relative border-b border-white/10">
-          <img 
-            src={course.thumbnail} 
-            alt={course.title || course.name} 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          />
-        </div>
-      )}
-      
-      <div className={`p-6 sm:p-7 flex-grow flex flex-col justify-start`}>
+      <div>
         <div
-          className={`inline-flex self-start items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
+          className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
             isSaffron ? "bg-cream text-saffron" : "bg-navy text-cream"
           }`}
         >
-          {course.grade || `Class ${course.classLevel}`}
+          Class {course.classLevel}
         </div>
         <h3 className="mt-5 font-display text-2xl font-black leading-tight md:text-[26px] transition-colors">
-          {course.title || course.name}
+            {course.name}
         </h3>
         <p className={`mt-3 text-sm leading-relaxed line-clamp-3 ${isSaffron ? "text-cream/90" : "text-ink"}`}>
-          {course.blurb || course.description}
+          {course.description}
         </p>
         <ul className="mt-5 flex flex-wrap gap-1.5">
           {subjects.map((s: string) => (
@@ -390,7 +370,7 @@ function CourseCard({ course }: { course: any }) {
         </ul>
       </div>
       
-      <div className={`px-6 pb-6 sm:px-7 sm:pb-7 flex items-end justify-between gap-3 relative z-10 border-t ${isSaffron ? "border-white/10 pt-5" : "border-navy/5 pt-5"}`}>
+      <div className={`mt-8 flex items-end justify-between gap-3 relative z-10`}>
         <div className="min-w-0">
           <p className={`text-xs ${isSaffron ? "text-cream/70" : "text-ink/70"}`}>From</p>
           <p className="font-display text-2xl font-black">
@@ -400,14 +380,14 @@ function CourseCard({ course }: { course: any }) {
                 isSaffron ? "text-cream/55" : "text-ink/50"
               }`}
             >
-              {course.original || ""}
+              {(course.salePrice ?? 0) > 0 ? `₹${course.salePrice.toLocaleString('en-IN')}` : ""}
             </span>
           </p>
         </div>
         <Link
           to="/courses/$slug"
           params={{ slug: course.slug || course.id || "course" }}
-          aria-label={`View ${course.title || course.name}`}
+          aria-label={`View ${course.name}`}
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
             isSaffron ? "bg-cream text-saffron hover:bg-white" : "bg-navy text-cream hover:bg-saffron hover:border-transparent"
           }`}

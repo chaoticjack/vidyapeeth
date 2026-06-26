@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getSeoMeta, getCanonicalLink, siteUrl } from "@/lib/seo";
 import { HeroSection } from "@/components/home/HeroSection";
 import { StatsBar } from "@/components/home/StatsBar";
 import { CourseShowcase } from "@/components/home/CourseShowcase";
@@ -12,29 +13,25 @@ import { WaveDivider } from "@/components/shared/WaveDivider";
 
 export const Route = createFileRoute("/")({
   head: () => ({
-    meta: [
+    meta: getSeoMeta(
+      "Education Matters | Class 6–10 Online Coaching",
+      "Live mentor-led classes for Class 6–10 across India. CBSE, ICSE & state boards. Book a free demo, win VSAT scholarships, learn without the noise.",
+      "/"
+    ),
+    links: [getCanonicalLink("/")],
+    scripts: [
       {
-        title:
-          "Vidyapeeth — Education Matters | Class 6–10 Online Coaching",
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "EducationalOrganization",
+          name: "Vidyapeeth",
+          url: siteUrl,
+          description: "Live mentor-led classes for Class 6–10 across India.",
+          sameAs: []
+        }),
       },
-      {
-        name: "description",
-        content:
-          "Live mentor-led classes for Class 6–10 across India. CBSE, ICSE & state boards. Book a free demo, win VSAT scholarships, learn without the noise.",
-      },
-      {
-        property: "og:title",
-        content: "Vidyapeeth — Education Matters",
-      },
-      {
-        property: "og:description",
-        content:
-          "India's most patient online school for Class 6–10. Live mentor classes, doubt rooms, weekly tests.",
-      },
-      { property: "og:url", content: "/" },
-      { property: "og:type", content: "website" },
     ],
-    links: [{ rel: "canonical", href: "/" }],
   }),
   component: Index,
 });

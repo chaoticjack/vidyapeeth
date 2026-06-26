@@ -1,23 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { getSeoMeta, getCanonicalLink, siteUrl } from "@/lib/seo";
 import { Gamepad2, Bot, Cookie, Star, Target, Eye, Sparkles, ArrowUpRight } from "lucide-react";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
-    meta: [
-      { title: "About Us — Vidyapeeth" },
-      {
-        name: "description",
-        content:
-          "Vidyapeeth is an ed-tech company focused on quality, affordable education for Class 6–12 students. Founded in 2022 in Delhi.",
-      },
-      { property: "og:title", content: "About Us — Vidyapeeth" },
-      {
-        property: "og:description",
-        content: "Quality education accessible to everyone — that's our mission.",
-      },
-      { property: "og:url", content: "/about" },
-    ],
-    links: [{ rel: "canonical", href: "/about" }],
+    meta: getSeoMeta(
+      "About Us",
+      "Vidyapeeth is an ed-tech company focused on quality, affordable education for Class 6–12 students. Founded in 2022 in Delhi.",
+      "/about"
+    ),
+    links: [getCanonicalLink("/about")],
   }),
   component: AboutPage,
 });

@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { getSeoMeta, getCanonicalLink } from "@/lib/seo";
+import { NewsletterForm } from "@/components/NewsletterForm";
 // trigger update
 import { ArrowUpRight, Clock, Search, ChevronDown, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -6,21 +8,12 @@ import { fetchPublishedBlogs, Blog } from "@/lib/firestore";
 
 export const Route = createFileRoute("/blog/")({
   head: () => ({
-    meta: [
-      { title: "Blog — Vidyapeeth" },
-      {
-        name: "description",
-        content:
-          "Study tips, parenting notes and exam guides from the Vidyapeeth team.",
-      },
-      { property: "og:title", content: "Blog — Vidyapeeth" },
-      {
-        property: "og:description",
-        content: "Study tips, parenting notes and exam guides.",
-      },
-      { property: "og:url", content: "/blog" },
-    ],
-    links: [{ rel: "canonical", href: "/blog" }],
+    meta: getSeoMeta(
+      "Blog",
+      "Study tips, parenting notes and exam guides from the Vidyapeeth team.",
+      "/blog"
+    ),
+    links: [getCanonicalLink("/blog")],
     scripts: [
       {
         type: "application/ld+json",
@@ -530,6 +523,17 @@ function BlogPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Newsletter Subscription */}
+      <section className="border-t border-navy/10 py-16 bg-white">
+        <div className="mx-auto max-w-2xl px-6 text-center">
+          <h3 className="font-display text-2xl font-black text-navy md:text-3xl">Subscribe to our Blog</h3>
+          <p className="mt-3 text-ink/80 mb-8">Get the latest study tips and resources delivered directly to your inbox. No spam, ever.</p>
+          <div className="max-w-md mx-auto">
+            <NewsletterForm source="blog" />
           </div>
         </div>
       </section>

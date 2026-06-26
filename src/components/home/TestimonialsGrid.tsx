@@ -84,7 +84,7 @@ export function TestimonialsGrid() {
   );
 }
 
-function MarqueeColumn({ items, direction, speed, className = "" }: { items: typeof testimonials, direction: "up" | "down", speed: string, className?: string }) {
+function MarqueeColumn({ items, direction, speed, className = "" }: { items: Array<typeof testimonials[number]>, direction: "up" | "down", speed: string, className?: string }) {
   // Duplicate items to ensure continuous scrolling
   const doubleItems = [...items, ...items];
   

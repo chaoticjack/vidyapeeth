@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { sendVsatNotification } from "@/lib/server-actions";
 
 const schema = z.object({
   studentName: z.string().min(2, "Student name is required"),
@@ -77,6 +78,8 @@ export function VsatPage() {
         ...values,
         createdAt: serverTimestamp(),
       });
+
+      sendVsatNotification({ data: values }).catch(console.error);
 
       toast.success("Registration submitted. Check your email.");
       setDone(true);

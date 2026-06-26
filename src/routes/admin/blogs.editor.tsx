@@ -6,6 +6,7 @@ import { z } from "zod";
 import { doc, getDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createBlog, updateBlog, Blog } from "@/lib/firestore";
+import { sendBlogPublishedNotification } from "@/lib/server-actions";
 import { ArrowLeft, Save, Send, Loader2, Image as ImageIcon, History, Monitor, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
@@ -186,9 +187,34 @@ function BlogEditor() {
         await updateBlog(blogId, payload);
         setVersions(payload.versions);
         toast.success(isPublishing ? "Blog published!" : "Blog updated!");
+        
+        if (isPublishing && data.status !== "published") {
+          sendBlogPublishedNotification({
+            data: {
+              blogId: blogId,
+              title: payload.title as string,
+              excerpt: payload.excerpt as string || "",
+              slug: payload.slug as string,
+              imageUrl: payload.featuredImage as string
+            }
+          }).catch(console.error);
+        }
       } else {
         const newBlog = await createBlog(payload as any);
         toast.success("Blog created!");
+        
+        if (isPublishing) {
+          sendBlogPublishedNotification({
+            data: {
+              blogId: newBlog.id,
+              title: newBlog.title,
+              excerpt: newBlog.excerpt || "",
+              slug: newBlog.slug,
+              imageUrl: newBlog.featuredImage
+            }
+          }).catch(console.error);
+        }
+
         navigate({ to: "/admin/blogs/editor", search: { id: newBlog.id } });
       }
     } catch (err) {
