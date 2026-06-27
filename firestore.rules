@@ -28,6 +28,12 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    match /demoBookings/{document=**} {
+      allow create: if true;
+      allow read: if request.auth != null && request.auth.uid == resource.data.studentId;
+      allow read, update, delete: if isAdmin();
+    }
+
     match /vsatRegistrations/{document=**} {
       allow create: if true;
       allow read, update, delete: if isAdmin();
@@ -87,8 +93,9 @@ service cloud.firestore {
     }
     
     match /enrollments/{document=**} {
-      allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
-      allow create, update, delete: if isAdmin();
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if isAdmin();
     }
 
     match /orders/{document=**} {
@@ -102,10 +109,10 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    match /progress/{document=**} {
-      allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+    match /studentProgress/{document=**} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.studentId;
+      allow update: if request.auth != null && (request.auth.uid == resource.data.studentId || isAdmin());
       allow delete: if isAdmin();
     }
 

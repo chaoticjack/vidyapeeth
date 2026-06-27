@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { fetchCourseBySlug, fetchSubjectsByCourse, fetchModulesBySubject, fetchLessonsBySubject, type Course, type Subject, type Module, type Lesson } from "@/lib/firestore";
 import { 
@@ -14,8 +14,14 @@ import {
   ClipboardList,
   GraduationCap,
   Loader2,
-  PlayCircle
+  PlayCircle,
+  Lock
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { computeUnlockedLessons, fetchOrderedLessonIds } from "@/lib/lesson-lock";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/courses/$classSlug/$subjectSlug")({
   component: SubjectDetailsPage,
@@ -29,6 +35,12 @@ function SubjectDetailsPage() {
   const [modules, setModules] = useState<Module[]>([]);
   const [lessonsByModule, setLessonsByModule] = useState<Record<string, Lesson[]>>({});
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  const [allLessonIds, setAllLessonIds] = useState<string[]>([]);
+  const [isSequential, setIsSequential] = useState(true);
 
   useEffect(() => {
     async function loadData() {
@@ -53,10 +65,41 @@ function SubjectDetailsPage() {
         }
         setLessonsByModule(grouped);
       }
+
+      if (user) {
+        const qEnroll = query(collection(db, "enrollments"), where("userId", "==", user.id), where("courseId", "==", c.id), where("status", "==", "active"));
+        const enrollSnap = await getDocs(qEnroll);
+        setIsEnrolled(!enrollSnap.empty);
+
+        // Set sequential flag from course data
+        setIsSequential((c as any).isSequential !== false);
+
+        // Fetch ALL lesson IDs for this course (ordered) using the shared utility
+        const orderedIds = await fetchOrderedLessonIds(c.id);
+        setAllLessonIds(orderedIds);
+      }
+      
       setLoading(false);
     }
     loadData();
-  }, [classSlug, subjectSlug]);
+  }, [classSlug, subjectSlug, user]);
+
+  // Real-time progress listener — syncs completedLessons when user completes lessons in the player
+  useEffect(() => {
+    if (!user || !course) return;
+    const qProgress = query(
+      collection(db, "studentProgress"),
+      where("studentId", "==", user.id),
+      where("courseId", "==", course.id)
+    );
+    const unsub = onSnapshot(qProgress, (snap) => {
+      if (!snap.empty) {
+        const data = snap.docs[0].data();
+        setCompletedLessons(data.completedLessons || []);
+      }
+    });
+    return () => unsub();
+  }, [user, course]);
 
   if (loading) {
     return (
@@ -189,27 +232,70 @@ function SubjectDetailsPage() {
                       {(lessonsByModule[mod.id] || []).length > 0 && (
                         <div className="p-0 border-t border-navy/5 bg-white">
                           <div className="divide-y divide-navy/5">
-                            {lessonsByModule[mod.id].map(lesson => (
-                              <div key={lesson.id} className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                            {lessonsByModule[mod.id].map(lesson => {
+                              const unlockedSet = computeUnlockedLessons(isSequential, allLessonIds, completedLessons);
+                              const isLessonUnlocked = !isEnrolled || unlockedSet.has(lesson.id);
+                              const isLessonCompleted = completedLessons.includes(lesson.id);
+                              const isLocked = isEnrolled && !isLessonUnlocked;
+
+                              return (
+                              <button 
+                                key={lesson.id} 
+                                onClick={() => {
+                                  if (!isEnrolled) {
+                                    navigate({ to: '/enroll/$courseId', params: { courseId: course.id } });
+                                    return;
+                                  }
+                                  if (isLocked) {
+                                    toast.error("🔒 Complete previous lessons first.");
+                                    return;
+                                  }
+                                  navigate({ to: '/learn/$courseId', params: { courseId: course.id }, search: { lessonId: lesson.id } });
+                                }}
+                                disabled={isLocked}
+                                className={`flex items-center gap-4 p-4 text-left w-full transition-colors group ${
+                                  isLocked 
+                                    ? 'opacity-50 cursor-not-allowed bg-gray-50' 
+                                    : 'hover:bg-gray-50 cursor-pointer'
+                                }`}
+                              >
                                 <div className="shrink-0">
-                                  {lesson.lessonType === 'pdf' || lesson.lessonType === 'assignment' ? (
+                                  {isLocked ? (
+                                    <Lock size={20} className="text-gray-400" />
+                                  ) : isLessonCompleted ? (
+                                    <CheckCircle2 size={20} className="text-green-500" />
+                                  ) : lesson.lessonType === 'pdf' || lesson.lessonType === 'assignment' ? (
                                     <FileText size={20} className="text-saffron/80" />
                                   ) : lesson.lessonType === 'quiz' ? (
                                     <ClipboardList size={20} className="text-saffron/80" />
                                   ) : (
-                                    <PlayCircle size={20} className="text-saffron/80" />
+                                    <PlayCircle size={20} className={`text-saffron/80 ${!isLocked ? 'group-hover:text-saffron' : ''} transition-colors`} />
                                   )}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold text-sm text-navy truncate">{lesson.title}</p>
+                                <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                  <p className={`font-semibold text-sm truncate transition-colors ${
+                                    isLocked ? 'text-gray-400' : 'text-navy group-hover:text-saffron'
+                                  }`}>{lesson.title}</p>
+                                  {(lesson.duration) && (
+                                    <div className="shrink-0 text-xs font-medium text-ink/50 bg-gray-100 px-2 py-1 rounded-md self-start sm:self-auto">
+                                      {lesson.duration}
+                                    </div>
+                                  )}
                                 </div>
-                                {(lesson.duration || lesson.estimatedDuration) && (
-                                  <div className="shrink-0 text-xs font-medium text-ink/50 bg-gray-100 px-2 py-1 rounded-md">
-                                    {lesson.duration || lesson.estimatedDuration}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                                <div className="shrink-0 text-gray-300 transition-colors">
+                                  {isLocked ? (
+                                    <Lock size={16} className="text-gray-400" />
+                                  ) : !isEnrolled ? (
+                                    <Lock size={16} />
+                                  ) : isLessonCompleted ? (
+                                    <CheckCircle2 size={16} className="text-green-500" />
+                                  ) : (
+                                    <ChevronRight size={16} className="group-hover:text-saffron" />
+                                  )}
+                                </div>
+                              </button>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -280,13 +366,24 @@ function SubjectDetailsPage() {
                     {(course.salePrice ?? 0) > 0 && <span className="text-sm font-semibold text-ink/40 line-through">₹{course.salePrice?.toLocaleString('en-IN')}</span>}
                   </div>
                   <div className="space-y-3">
-                    <Link
-                      to="/enroll/$courseId"
-                      params={{ courseId: course.slug || course.id }}
-                      className="inline-flex justify-center w-full rounded-full bg-navy py-3.5 text-sm font-bold text-cream transition-transform hover:-translate-y-1 hover:bg-saffron"
-                    >
-                      Enroll Now
-                    </Link>
+                    {isEnrolled ? (
+                      <Link
+                        to="/learn/$courseId"
+                        params={{ courseId: course.id }}
+                        search={{ lessonId: undefined }}
+                        className="inline-flex justify-center w-full rounded-full bg-navy py-3.5 text-sm font-bold text-cream transition-transform hover:-translate-y-1 hover:bg-saffron"
+                      >
+                        Go to Course
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/enroll/$courseId"
+                        params={{ courseId: course.slug || course.id }}
+                        className="inline-flex justify-center w-full rounded-full bg-navy py-3.5 text-sm font-bold text-cream transition-transform hover:-translate-y-1 hover:bg-saffron"
+                      >
+                        Enroll Now
+                      </Link>
+                    )}
                     <Link to="/demo-class" className="flex w-full justify-center rounded-full border-2 border-navy/10 py-3 text-sm font-bold text-navy transition-colors hover:bg-navy/5">
                       Book Free Demo
                     </Link>

@@ -9,6 +9,7 @@ import { createBlog, updateBlog, Blog } from "@/lib/firestore";
 import { sendBlogPublishedNotification } from "@/lib/server-actions";
 import { ArrowLeft, Save, Send, Loader2, Image as ImageIcon, History, Monitor, Smartphone } from "lucide-react";
 import { toast } from "sonner";
+import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
 
 // Zod Schema
 const seoSchema = z.object({
@@ -180,7 +181,7 @@ function BlogEditor() {
 
       if (blogId) {
         const newVersion = {
-          updatedAt: serverTimestamp(),
+          updatedAt: new Date().toISOString(),
           updatedBy: "Admin", // Would be actual user ID in a real app
         };
         payload.versions = [...versions, newVersion];
@@ -332,7 +333,7 @@ function BlogEditor() {
                 
                 <div className="h-[600px] rounded-xl border border-gray-200 bg-white overflow-hidden flex justify-center shadow-sm">
                   <div className={`h-full overflow-y-auto bg-cream p-6 w-full ${previewMode === "mobile" ? "max-w-[375px] border-x border-gray-200 shadow-xl" : ""}`}>
-                    <ArticlePreview content={watchContent} />
+                    {watchContent ? <MarkdownRenderer content={watchContent} /> : <p className="text-gray-400 italic text-sm text-center mt-10">Start typing to see preview...</p>}
                   </div>
                 </div>
               </div>
@@ -488,7 +489,11 @@ function BlogEditor() {
                         <History size={16} className="mt-0.5 text-gray-400 shrink-0" />
                         <div>
                           <p className="text-xs font-semibold text-navy">Updated by {v.updatedBy}</p>
-                          <p className="text-[10px] text-gray-500">{v.updatedAt?.toDate ? v.updatedAt.toDate().toLocaleString() : 'Just now'}</p>
+                          <p className="text-[10px] text-gray-500">
+                            {v.updatedAt?.toDate 
+                              ? v.updatedAt.toDate().toLocaleString() 
+                              : (typeof v.updatedAt === 'string' ? new Date(v.updatedAt).toLocaleString() : 'Just now')}
+                          </p>
                         </div>
                       </div>
                     ))
@@ -516,53 +521,3 @@ function SectionCard({ title, children }: { title: string, children: React.React
   );
 }
 
-// Reusable Markdown parser exactly matching the public site
-function ArticlePreview({ content }: { content: string }) {
-  if (!content) return <p className="text-gray-400 italic text-sm text-center mt-10">Start typing to see preview...</p>;
-  
-  const blocks = content.split(/\n{2,}/);
-  return (
-    <article className="space-y-0 text-left">
-      {blocks.map((block, i) => {
-        const line = block.trim();
-
-        if (line.startsWith("## ")) {
-          const text = line.replace("## ", "");
-          return <h2 key={i} className="mt-8 mb-4 font-display text-2xl font-black text-navy">{text}</h2>;
-        }
-        if (line.startsWith("### ")) {
-          const text = line.replace("### ", "");
-          return <h3 key={i} className="mt-6 mb-3 font-display text-lg font-bold text-navy">{text}</h3>;
-        }
-        if (line.startsWith("> ")) {
-          return (
-            <blockquote key={i} className="my-6 border-l-4 border-saffron pl-4 py-1">
-              <p className="text-lg font-display font-semibold italic text-navy/80 leading-relaxed">{line.replace("> ", "")}</p>
-            </blockquote>
-          );
-        }
-        if (line.startsWith("TIP: ")) {
-          return (
-            <div key={i} className="my-5 flex gap-3 rounded-xl bg-saffron/8 border border-saffron/20 px-4 py-3">
-              <span className="mt-0.5 text-saffron shrink-0">💡</span>
-              <p className="text-xs leading-relaxed text-ink">{line.replace("TIP: ", "")}</p>
-            </div>
-          );
-        }
-        if (line.startsWith("NOTE: ")) {
-          return (
-            <div key={i} className="my-5 flex gap-3 rounded-xl bg-navy/5 border border-navy/10 px-4 py-3">
-              <span className="mt-0.5 text-navy shrink-0">📌</span>
-              <p className="text-xs leading-relaxed text-ink">{line.replace("NOTE: ", "")}</p>
-            </div>
-          );
-        }
-        return (
-          <p key={i} className={`text-sm leading-relaxed text-ink mt-3`}>
-            {line}
-          </p>
-        );
-      })}
-    </article>
-  );
-}

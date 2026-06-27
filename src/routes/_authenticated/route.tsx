@@ -6,6 +6,11 @@ import { Loader2 } from "lucide-react";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   component: AuthenticatedLayout,
+  pendingComponent: () => (
+    <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
+      <div className="w-8 h-8 border-2 border-[#1B2A4A] border-t-transparent rounded-full animate-spin" />
+    </div>
+  ),
 });
 
 function AuthenticatedLayout() {

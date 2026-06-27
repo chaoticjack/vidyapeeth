@@ -137,6 +137,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
+  pendingComponent: () => (
+    <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
+      <div className="w-8 h-8 border-2 border-[#1B2A4A] border-t-transparent rounded-full animate-spin" />
+    </div>
+  ),
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
@@ -174,7 +179,8 @@ function SiteShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdminRoute = pathname.startsWith("/admin");
   const isAuthRoute = pathname.startsWith("/auth");
-  const hideChrome = isAdminRoute || isAuthRoute;
+  const isLearnRoute = pathname.startsWith("/learn");
+  const hideChrome = isAdminRoute || isAuthRoute || isLearnRoute;
 
   return (
     <>

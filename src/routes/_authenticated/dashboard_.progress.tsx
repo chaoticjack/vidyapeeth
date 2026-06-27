@@ -8,8 +8,7 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { useDashboardData } from "@/hooks/use-dashboard-data";
 import { db } from "@/lib/firebase";
 
 const searchSchema = z.object({
@@ -28,37 +27,9 @@ export const Route = createFileRoute("/_authenticated/dashboard_/progress")({
 function ProgressPage() {
   const { confirmed, ref } = Route.useSearch();
   const { user } = useAuth();
-  const [enrollments, setEnrollments] = useState<any[]>([]);
-  const [demoBookings, setDemoBookings] = useState<any[]>([]);
-  const [topicsMastered, setTopicsMastered] = useState(0);
+  const { activeCourses, demoBookings, stats, loading } = useDashboardData(user?.id);
 
-  useEffect(() => {
-    if (!user) return;
-
-    const unsubE = onSnapshot(
-      query(collection(db, "enrollments"), where("userId", "==", user.id)),
-      (snap) => setEnrollments(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
-
-    const unsubD = onSnapshot(
-      query(collection(db, "demoRegistrations"), where("userId", "==", user.id)),
-      (snap) => setDemoBookings(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
-
-    // Fetch topics mastered based on lesson_completed activities
-    const unsubTopics = onSnapshot(
-      query(collection(db, "activities"), where("userId", "==", user.id), where("type", "==", "lesson_completed")),
-      (snap) => setTopicsMastered(snap.size)
-    );
-
-    return () => {
-      unsubE();
-      unsubD();
-      unsubTopics();
-    };
-  }, [user]);
-
-  if (!user) return null;
+  if (!user || loading) return null;
 
   return (
     <section className="grain bg-cream pt-32 pb-24 md:pt-36">
@@ -111,17 +82,17 @@ function ProgressPage() {
           <Stat
             icon={<Sparkles size={18} className="text-saffron" />}
             label="Active Enrollments"
-            value={enrollments.length}
+            value={stats.enrolledCount}
           />
           <Stat
             icon={<CalendarCheck2 size={18} className="text-saffron" />}
             label="Demo Classes Taken"
-            value={demoBookings.length}
+            value={stats.demoClassesTaken}
           />
           <Stat
             icon={<CheckCircle2 size={18} className="text-saffron" />}
             label="Topics Mastered"
-            value={topicsMastered}
+            value={stats.topicsMastered}
           />
         </div>
 
@@ -131,7 +102,7 @@ function ProgressPage() {
             <h2 className="font-display text-xl font-black text-navy">Current Enrollments</h2>
           </div>
           <div className="mt-5">
-            {enrollments.length === 0 ? (
+            {activeCourses.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-navy/15 p-8 text-center">
                 <p className="font-semibold text-navy">No active courses</p>
                 <Link
@@ -143,16 +114,16 @@ function ProgressPage() {
               </div>
             ) : (
               <ul className="divide-y divide-navy/10">
-                {enrollments.map((e) => (
+                {activeCourses.map((c) => (
                   <li
-                    key={e.id}
+                    key={c.id}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-4 sm:flex sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-navy">{e.courseName}</p>
-                      <p className="mt-0.5 text-xs text-ink/60">Enrolled on {e.createdAt?.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || 'Recently'}</p>
+                      <p className="truncate font-semibold text-navy">{c.title}</p>
+                      <p className="mt-0.5 text-xs text-ink/60">Enrolled on {c.enrollmentDate}</p>
                     </div>
-                    <StatusPill status={e.status || "active"} />
+                    <StatusPill status={"active"} />
                   </li>
                 ))}
               </ul>
@@ -186,7 +157,7 @@ function ProgressPage() {
                   >
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-navy">Class {b.classLevel} Demo - {b.studentName}</p>
-                      <p className="mt-0.5 text-xs text-ink/60">Scheduled for {b.createdAt?.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || 'Recently'}</p>
+                      <p className="mt-0.5 text-xs text-ink/60">Scheduled for {b.date} at {b.time}</p>
                     </div>
                     <StatusPill status={b.status || "pending"} />
                   </li>

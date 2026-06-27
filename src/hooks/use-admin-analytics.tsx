@@ -262,7 +262,7 @@ export function useAdminAnalytics(dateRange: DateRange = '30d') {
           getKpi('blogs', 'createdAt', [where('published', '==', true)], d => d.published === true),
           getKpi('vsatRegistrations', 'createdAt'),
           getKpi('vsatRegistrations', 'createdAt', [where('status', 'in', ['pending', 'registered'])], d => ['pending', 'registered'].includes(d.status)),
-          getKpi('progress', 'lastActivityAt', [where('percentage', '==', 100)], d => d.percentage === 100) 
+          getKpi('studentProgress', 'updatedAt', [where('progressPercentage', '==', 100)], d => d.progressPercentage === 100) 
         ]);
 
         // Active Students (Unique userIds in enrollments)
@@ -281,22 +281,22 @@ export function useAdminAnalytics(dateRange: DateRange = '30d') {
         };
 
         // Fetch all progress to calculate overall and per-course averages in memory (avoids composite index)
-        const allProgressSnap = await getDocs(collection(db, "progress"));
+        const allProgressSnap = await getDocs(collection(db, "studentProgress"));
         let totalPercentage = 0;
         let progressCount = 0;
         const courseProgressMap: Record<string, { total: number, count: number }> = {};
         
         allProgressSnap.forEach(doc => {
           const d = doc.data();
-          if (typeof d.percentage === 'number') {
-            totalPercentage += d.percentage;
+          if (typeof d.progressPercentage === 'number') {
+            totalPercentage += d.progressPercentage;
             progressCount++;
             
             if (d.courseId) {
               if (!courseProgressMap[d.courseId]) {
                 courseProgressMap[d.courseId] = { total: 0, count: 0 };
               }
-              courseProgressMap[d.courseId].total += d.percentage;
+              courseProgressMap[d.courseId].total += d.progressPercentage;
               courseProgressMap[d.courseId].count++;
             }
           }

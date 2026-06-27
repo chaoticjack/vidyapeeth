@@ -34,6 +34,9 @@ export const Route = createFileRoute("/")({
     ],
   }),
   component: Index,
+  pendingComponent: () => (
+    <div className="min-h-screen bg-[#FAF7F2]" />
+  ),
 });
 
 function Index() {

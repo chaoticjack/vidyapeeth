@@ -29,6 +29,11 @@ import { db } from '@/lib/firebase';
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin Panel — Vidyapeeth" }] }),
   component: AdminLayout,
+  pendingComponent: () => (
+    <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
+      <div className="w-8 h-8 border-2 border-[#1B2A4A] border-t-transparent rounded-full animate-spin" />
+    </div>
+  ),
 });
 
 const adminLinks = [
@@ -36,10 +41,7 @@ const adminLinks = [
   { to: "/admin/students", icon: <Users size={18} />, label: "Students" },
   { to: "/admin/teachers", icon: <GraduationCap size={18} />, label: "Teachers" },
   { to: "/admin/categories", icon: <Library size={18} />, label: "Categories" },
-  { to: "/admin/subjects", icon: <BookOpen size={18} />, label: "Subjects" },
-  { to: "/admin/courses", icon: <BookOpen size={18} />, label: "Courses" },
-  { to: "/admin/modules", icon: <ListTree size={18} />, label: "Modules" },
-  { to: "/admin/lessons", icon: <Video size={18} />, label: "Lessons" },
+  { to: "/admin/courses", icon: <BookOpen size={18} />, label: "Course Builder" },
   { to: "/admin/enrollments", icon: <BadgeCheck size={18} />, label: "Enrollments" },
   { to: "/admin/demo-requests", icon: <CalendarCheck2 size={18} />, label: "Demo Requests" },
   { to: "/admin/blogs", icon: <FileText size={18} />, label: "Blog Management" },

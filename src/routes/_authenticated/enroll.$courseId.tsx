@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { enrollCourse, checkIsEnrolled, fetchCourseBySlug, type Course } from "@/lib/firestore";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { logActivity } from "@/lib/activity-logger";
 import { toast } from "sonner";
@@ -88,7 +88,43 @@ function EnrollCoursePage() {
       // Parse amount from string like "₹24,999" or "Free"
       let numericAmount = course?.price || 0;
 
-      // 1. Create order
+      // 1. FAST PATH FOR FREE COURSES
+      if (numericAmount <= 0) {
+        try {
+          await addDoc(collection(db, "enrollments"), {
+            userId: user.id,
+            courseId,
+            status: "active",
+            paymentStatus: "free",
+            amount: 0,
+            studentName,
+            classLevel,
+            batchTiming,
+            notes,
+            enrolledAt: serverTimestamp()
+          });
+
+          await logActivity({
+            userId: user.id,
+            type: "enrollment",
+            title: `Enrolled in ${course?.name || 'Course'}`,
+            description: `You have successfully enrolled in ${course?.name || 'Course'} for free.`,
+            courseId: courseId,
+            metadata: { batchTiming, amount: 0 }
+          });
+
+          toast.success("Enrollment successful. Course added to your dashboard.");
+          setShowPaymentModal(false);
+          navigate({ to: "/dashboard" });
+        } catch (err: any) {
+          console.error("Free enrollment error:", err);
+          toast.error("Failed to enroll. Permission denied or network error.");
+          setIsProcessing(false);
+        }
+        return;
+      }
+
+      // 2. Create order for paid courses
       const orderResponse = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

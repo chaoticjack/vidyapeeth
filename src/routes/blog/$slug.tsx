@@ -6,11 +6,12 @@ import { useEffect, useState } from "react";
 import { motion, useScroll, useSpring } from "framer-motion";
 import {
   ArrowLeft, ChevronDown, ExternalLink,
-  Link2, Loader2, Twitter
+  Link2, Loader2, Twitter, Linkedin, MessageCircle, Share2, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchBlogBySlug, fetchPublishedBlogs, type Blog } from "@/lib/firestore";
 import { ScrollReveal } from "@/components/shared/ScrollReveal";
+import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
 
 const fetchBlogSeo = createServerFn({ method: "GET" })
   .validator((slug: string) => slug)
@@ -152,7 +153,7 @@ function BlogPostPage() {
             
             <div className="min-w-0 flex-1 max-w-[740px]">
               <MobileTOC headings={headings} />
-              <ArticleContent content={post.content || ""} />
+              <MarkdownRenderer content={post.content || ""} />
               <AuthorBlock post={post} />
             </div>
           </div>
@@ -173,21 +174,20 @@ function BlogPostPage() {
           <NewsletterSection />
         </div>
       </div>
-      
-      <DesktopShareBar post={post} />
-      <MobileShareStrip post={post} />
     </>
   );
 }
 
 function extractHeadings(content: string) {
+  // Simple slugifier that closely matches github-slugger used by rehype-slug
+  const slugify = (text: string) => text.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
   return content.split("\n").reduce<{ id: string; text: string; level: 2 | 3 }[]>((acc, line) => {
     if (line.startsWith("## ")) {
       const text = line.replace("## ", "").trim();
-      acc.push({ id: text.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, ""), text, level: 2 });
+      acc.push({ id: slugify(text), text, level: 2 });
     } else if (line.startsWith("### ")) {
       const text = line.replace("### ", "").trim();
-      acc.push({ id: text.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, ""), text, level: 3 });
+      acc.push({ id: slugify(text), text, level: 3 });
     }
     return acc;
   }, []);
@@ -338,95 +338,80 @@ function MobileTOC({ headings }: { headings: ReturnType<typeof extractHeadings> 
   );
 }
 
-function ArticleContent({ content }: { content: string }) {
-  const blocks = content.split(/\n{2,}/);
-  return (
-    <article className="space-y-0">
-      {blocks.map((block, i) => {
-        const line = block.trim();
 
-        if (line.startsWith("## ")) {
-          const text = line.replace("## ", "");
-          const id = text.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "");
-          return (
-            <h2 key={i} id={id} className="mt-12 mb-4 font-display text-3xl font-black text-navy scroll-mt-28">
-              {text}
-            </h2>
-          );
-        }
-
-        if (line.startsWith("### ")) {
-          const text = line.replace("### ", "");
-          const id = text.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "");
-          return (
-            <h3 key={i} id={id} className="mt-8 mb-3 font-display text-xl font-bold text-navy scroll-mt-28">
-              {text}
-            </h3>
-          );
-        }
-
-        if (line.startsWith("> ")) {
-          return (
-            <blockquote key={i} className="my-8 border-l-4 border-saffron pl-6 py-1">
-              <p className="text-xl font-display font-semibold italic text-navy/80 leading-relaxed">
-                {line.replace("> ", "")}
-              </p>
-            </blockquote>
-          );
-        }
-
-        if (line.startsWith("TIP: ")) {
-          return (
-            <div key={i} className="my-6 flex gap-3 rounded-xl bg-saffron/8 border border-saffron/20 px-5 py-4">
-              <span className="mt-0.5 text-saffron shrink-0">💡</span>
-              <p className="text-sm leading-relaxed text-ink">{line.replace("TIP: ", "")}</p>
-            </div>
-          );
-        }
-
-        if (line.startsWith("NOTE: ")) {
-          return (
-            <div key={i} className="my-6 flex gap-3 rounded-xl bg-navy/5 border border-navy/10 px-5 py-4">
-              <span className="mt-0.5 text-navy shrink-0">📌</span>
-              <p className="text-sm leading-relaxed text-ink">{line.replace("NOTE: ", "")}</p>
-            </div>
-          );
-        }
-
-        return (
-          <p key={i} className={`text-lg leading-[1.85] text-ink ${i === 0 ? "first-letter:text-5xl first-letter:font-black first-letter:font-display first-letter:text-navy first-letter:float-left first-letter:mr-2 first-letter:leading-[0.85]" : "mt-5"}`}>
-            {line}
-          </p>
-        );
-      })}
-    </article>
-  );
-}
 
 function AuthorBlock({ post }: { post: Blog }) {
   if (!post.author) return null;
   const authorName = typeof post.author === 'string' ? post.author : post.author.name;
   const authorImage = typeof post.author === 'object' ? post.author.image : null;
-  const authorBio = typeof post.author === 'object' && post.author.bio ? post.author.bio : "Mentor at Vidyapeeth · Helping students ace boards since 2018.";
-  const authorRole = typeof post.author === 'object' && post.author.role ? post.author.role : "Written by";
+  const authorBio = typeof post.author === 'object' && post.author.bio ? post.author.bio : "Mentor at Vidyapeeth · Helping students learn smarter through practical study techniques and exam strategies.";
+  const authorRole = typeof post.author === 'object' && post.author.role ? post.author.role : "ECE Student • Mentor at Vidyapeeth";
+
+  const { whatsappUrl, linkedinUrl, twitterUrl } = getShareLinks(post);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success("Link copied!");
+  };
+  const handleNativeShare = () => {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      navigator.share({ title: post.title, url: window.location.href }).catch(console.error);
+    }
+  };
 
   return (
-    <ScrollReveal>
-      <div className="mt-16 flex items-start gap-5 rounded-2xl border border-navy/10 bg-white p-6">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-navy text-cream text-lg font-bold font-display overflow-hidden">
+    <div className="mt-20">
+      {/* Share Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-b border-navy/5 py-6 mb-8 gap-4">
+        <p className="font-semibold text-navy text-sm uppercase tracking-wider text-center sm:text-left">Share this article</p>
+        <div className="flex items-center justify-center sm:justify-start gap-2">
+          {typeof navigator !== "undefined" && navigator.share && (
+            <button onClick={handleNativeShare} className="flex h-10 w-10 items-center justify-center rounded-full bg-navy/5 text-navy hover:bg-saffron hover:text-white transition-colors" title="Share via Device">
+               <Share2 size={18} />
+            </button>
+          )}
+          <button onClick={handleCopy} className="flex h-10 w-10 items-center justify-center rounded-full bg-navy/5 text-navy hover:bg-saffron hover:text-white transition-colors" title="Copy Link">
+            <Link2 size={18} />
+          </button>
+          <a href={twitterUrl} target="_blank" rel="noreferrer" className="flex h-10 w-10 items-center justify-center rounded-full bg-navy/5 text-navy hover:bg-saffron hover:text-white transition-colors" title="Share on X">
+            <Twitter size={18} />
+          </a>
+          <a href={linkedinUrl} target="_blank" rel="noreferrer" className="flex h-10 w-10 items-center justify-center rounded-full bg-navy/5 text-navy hover:bg-saffron hover:text-white transition-colors" title="Share on LinkedIn">
+            <Linkedin size={18} />
+          </a>
+          <a href={whatsappUrl} target="_blank" rel="noreferrer" className="flex h-10 w-10 items-center justify-center rounded-full bg-navy/5 text-navy hover:bg-saffron hover:text-white transition-colors" title="Share on WhatsApp">
+            <MessageCircle size={18} />
+          </a>
+        </div>
+      </div>
+
+      {/* Author Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.4 }}
+        className="flex flex-col sm:flex-row items-center sm:items-start gap-5 rounded-2xl border border-navy/5 bg-cream/30 px-6 py-6"
+      >
+        <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full bg-navy text-cream text-2xl font-bold font-display overflow-hidden shadow-sm">
           {authorImage ? (
             <img src={authorImage} alt={authorName} className="h-full w-full object-cover" />
           ) : (
             authorName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()
           )}
         </div>
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-saffron">{authorRole}</p>
-          <p className="mt-1 font-display text-lg font-black text-navy">{authorName}</p>
-          <p className="mt-1 text-sm text-ink/70">{authorBio}</p>
+        <div className="flex-1 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
+            <h4 className="font-display text-xl font-bold text-navy">{authorName}</h4>
+            <Link to="/blog" className="text-xs font-semibold text-saffron hover:text-navy transition-colors mt-2 sm:mt-0 flex items-center justify-center sm:justify-start gap-1">
+              View all posts <ArrowRight size={14} />
+            </Link>
+          </div>
+          <p className="text-xs font-semibold text-ink/60 mb-2">{authorRole}</p>
+          <p className="text-sm text-ink/80 leading-relaxed mb-3 max-w-[90%] mx-auto sm:mx-0">{authorBio}</p>
+          <p className="text-xs font-bold text-navy/40">27 Articles Published</p>
         </div>
-      </div>
-    </ScrollReveal>
+      </motion.div>
+    </div>
   );
 }
 
@@ -464,7 +449,7 @@ function NewsletterSection() {
       <section className="mt-20 rounded-3xl bg-navy grain px-8 py-12 text-center text-cream">
         <span className="text-xs font-bold uppercase tracking-[0.22em] text-saffron">Stay sharp</span>
         <h3 className="mt-3 font-display text-3xl font-black">Enjoyed this article?</h3>
-        <p className="mt-3 text-cream/70">Get weekly study tips and exam strategies in your inbox.</p>
+        <p className="mt-3 text-cream/70 max-w-lg mx-auto">Get weekly study tips, exam strategies, and latest educational updates directly in your inbox.</p>
         <div className="mx-auto mt-6 flex max-w-sm flex-col gap-3 sm:flex-row">
           <form className="flex w-full flex-col sm:flex-row gap-3" onSubmit={(e) => { e.preventDefault(); toast.success("You're subscribed! 🎉"); }}>
             <input
@@ -492,59 +477,3 @@ function getShareLinks(post: Blog) {
   };
 }
 
-function DesktopShareBar({ post }: { post: Blog }) {
-  const { whatsappUrl, linkedinUrl, twitterUrl } = getShareLinks(post);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success("Link copied!");
-  };
-
-  return (
-    <div className="hidden lg:flex fixed left-6 top-1/2 -translate-y-1/2 flex-col gap-3 z-40">
-      {[
-        { icon: <Link2 size={16} />, label: "Copy", action: handleCopy },
-        { icon: <ExternalLink size={16} />, label: "WhatsApp", href: whatsappUrl },
-        { icon: <ExternalLink size={16} />, label: "LinkedIn", href: linkedinUrl },
-        { icon: <Twitter size={16} />, label: "X", href: twitterUrl },
-      ].map((item) => (
-        <motion.button
-          key={item.label}
-          whileHover={{ scale: 1.1, x: 2 }}
-          onClick={item.action ?? (() => window.open(item.href, "_blank"))}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white border border-navy/10 text-navy shadow-sm hover:border-saffron hover:text-saffron transition-colors"
-          title={item.label}
-        >
-          {item.icon}
-        </motion.button>
-      ))}
-    </div>
-  );
-}
-
-function MobileShareStrip({ post }: { post: Blog }) {
-  const { whatsappUrl, linkedinUrl, twitterUrl } = getShareLinks(post);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success("Link copied!");
-  };
-
-  return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-evenly border-t border-navy/10 bg-white/90 p-3 backdrop-blur-md lg:hidden">
-      {[
-        { icon: <Link2 size={20} />, label: "Copy", action: handleCopy },
-        { icon: <ExternalLink size={20} />, label: "WhatsApp", href: whatsappUrl },
-        { icon: <ExternalLink size={20} />, label: "LinkedIn", href: linkedinUrl },
-        { icon: <Twitter size={20} />, label: "X", href: twitterUrl },
-      ].map((item) => (
-        <button
-          key={item.label}
-          onClick={item.action ?? (() => window.open(item.href, "_blank"))}
-          className="flex h-12 w-12 items-center justify-center rounded-full text-navy hover:bg-navy/5 active:scale-95 transition-all"
-          title={item.label}
-        >
-          {item.icon}
-        </button>
-      ))}
-    </div>
-  );
-}

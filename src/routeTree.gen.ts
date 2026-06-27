@@ -51,6 +51,7 @@ import { Route as ApiPaymentsVerifyRouteImport } from './routes/api/payments/ver
 import { Route as ApiPaymentsCreateOrderRouteImport } from './routes/api/payments/create-order'
 import { Route as AdminMarketingNewsletterRouteImport } from './routes/admin/marketing.newsletter'
 import { Route as AdminBlogsEditorRouteImport } from './routes/admin/blogs.editor'
+import { Route as AuthenticatedLearnCourseIdRouteImport } from './routes/_authenticated/learn.$courseId'
 import { Route as AuthenticatedEnrollCourseIdRouteImport } from './routes/_authenticated/enroll.$courseId'
 import { Route as AuthenticatedEnrollSuccessCourseIdRouteImport } from './routes/_authenticated/enroll-success.$courseId'
 import { Route as AuthenticatedDashboardProgressRouteImport } from './routes/_authenticated/dashboard_.progress'
@@ -266,6 +267,12 @@ const AdminBlogsEditorRoute = AdminBlogsEditorRouteImport.update({
   path: '/blogs/editor',
   getParentRoute: () => AdminRoute,
 } as any)
+const AuthenticatedLearnCourseIdRoute =
+  AuthenticatedLearnCourseIdRouteImport.update({
+    id: '/learn/$courseId',
+    path: '/learn/$courseId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedEnrollCourseIdRoute =
   AuthenticatedEnrollCourseIdRouteImport.update({
     id: '/enroll/$courseId',
@@ -323,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/progress': typeof AuthenticatedDashboardProgressRoute
   '/enroll-success/$courseId': typeof AuthenticatedEnrollSuccessCourseIdRoute
   '/enroll/$courseId': typeof AuthenticatedEnrollCourseIdRoute
+  '/learn/$courseId': typeof AuthenticatedLearnCourseIdRoute
   '/admin/blogs/editor': typeof AdminBlogsEditorRoute
   '/admin/marketing/newsletter': typeof AdminMarketingNewsletterRoute
   '/api/payments/create-order': typeof ApiPaymentsCreateOrderRoute
@@ -368,6 +376,7 @@ export interface FileRoutesByTo {
   '/dashboard/progress': typeof AuthenticatedDashboardProgressRoute
   '/enroll-success/$courseId': typeof AuthenticatedEnrollSuccessCourseIdRoute
   '/enroll/$courseId': typeof AuthenticatedEnrollCourseIdRoute
+  '/learn/$courseId': typeof AuthenticatedLearnCourseIdRoute
   '/admin/blogs/editor': typeof AdminBlogsEditorRoute
   '/admin/marketing/newsletter': typeof AdminMarketingNewsletterRoute
   '/api/payments/create-order': typeof ApiPaymentsCreateOrderRoute
@@ -416,6 +425,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard_/progress': typeof AuthenticatedDashboardProgressRoute
   '/_authenticated/enroll-success/$courseId': typeof AuthenticatedEnrollSuccessCourseIdRoute
   '/_authenticated/enroll/$courseId': typeof AuthenticatedEnrollCourseIdRoute
+  '/_authenticated/learn/$courseId': typeof AuthenticatedLearnCourseIdRoute
   '/admin/blogs/editor': typeof AdminBlogsEditorRoute
   '/admin/marketing/newsletter': typeof AdminMarketingNewsletterRoute
   '/api/payments/create-order': typeof ApiPaymentsCreateOrderRoute
@@ -464,6 +474,7 @@ export interface FileRouteTypes {
     | '/dashboard/progress'
     | '/enroll-success/$courseId'
     | '/enroll/$courseId'
+    | '/learn/$courseId'
     | '/admin/blogs/editor'
     | '/admin/marketing/newsletter'
     | '/api/payments/create-order'
@@ -509,6 +520,7 @@ export interface FileRouteTypes {
     | '/dashboard/progress'
     | '/enroll-success/$courseId'
     | '/enroll/$courseId'
+    | '/learn/$courseId'
     | '/admin/blogs/editor'
     | '/admin/marketing/newsletter'
     | '/api/payments/create-order'
@@ -556,6 +568,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard_/progress'
     | '/_authenticated/enroll-success/$courseId'
     | '/_authenticated/enroll/$courseId'
+    | '/_authenticated/learn/$courseId'
     | '/admin/blogs/editor'
     | '/admin/marketing/newsletter'
     | '/api/payments/create-order'
@@ -883,6 +896,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBlogsEditorRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_authenticated/learn/$courseId': {
+      id: '/_authenticated/learn/$courseId'
+      path: '/learn/$courseId'
+      fullPath: '/learn/$courseId'
+      preLoaderRoute: typeof AuthenticatedLearnCourseIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/enroll/$courseId': {
       id: '/_authenticated/enroll/$courseId'
       path: '/enroll/$courseId'
@@ -914,6 +934,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardProgressRoute: typeof AuthenticatedDashboardProgressRoute
   AuthenticatedEnrollSuccessCourseIdRoute: typeof AuthenticatedEnrollSuccessCourseIdRoute
   AuthenticatedEnrollCourseIdRoute: typeof AuthenticatedEnrollCourseIdRoute
+  AuthenticatedLearnCourseIdRoute: typeof AuthenticatedLearnCourseIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -924,6 +945,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEnrollSuccessCourseIdRoute:
     AuthenticatedEnrollSuccessCourseIdRoute,
   AuthenticatedEnrollCourseIdRoute: AuthenticatedEnrollCourseIdRoute,
+  AuthenticatedLearnCourseIdRoute: AuthenticatedLearnCourseIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

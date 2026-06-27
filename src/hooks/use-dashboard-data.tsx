@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs, getCountFromServer } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 function formatTimeAgo(date: Date) {
@@ -19,42 +19,55 @@ function formatTimeAgo(date: Date) {
 export interface Activity {
   id: string;
   text: string;
-  time: string; // e.g. "2 hours ago"
-  timestamp: string; // ISO string for sorting
+  time: string;
+  timestamp: string;
   type?: string;
 }
 
-export interface UpcomingLiveClassData {
+export interface DemoBooking {
   id: string;
-  title: string;
   date: string;
   time: string;
-  zoomLink?: string;
-}
-
-export interface CourseData {
-  id: string;
-  title: string;
-  upcomingLiveClass?: any;
-  liveClassSchedule?: any;
+  teacher: string;
+  classLevel?: string;
+  studentName?: string;
+  status: "pending" | "completed" | "cancelled";
+  meetingLink?: string;
+  timestamp: number;
 }
 
 export interface ActiveCourse {
   id: string;
   courseId: string;
   title: string;
+  thumbnail: string;
+  subjectClass: string;
+  enrollmentDate: string;
   progress: number;
+  completedLessons: number;
+  totalLessons: number;
   nextLesson: string;
-  duration: string;
 }
+
+const totalLessonsCache: Record<string, number> = {};
 
 export function useDashboardData(userId?: string) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activeCourses, setActiveCourses] = useState<ActiveCourse[]>([]);
-  const [liveClasses, setLiveClasses] = useState<UpcomingLiveClassData[]>([]);
-  const [overallProgress, setOverallProgress] = useState(0);
-  const [enrolledCount, setEnrolledCount] = useState(0);
+  const [demoBookings, setDemoBookings] = useState<DemoBooking[]>([]);
+  
+  const [stats, setStats] = useState({
+    enrolledCount: 0,
+    demoClassesTaken: 0,
+    topicsMastered: 0,
+  });
+  
   const [loading, setLoading] = useState(true);
+
+  // New state variables to decouple data fetching from computation
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [coursesMap, setCoursesMap] = useState<Record<string, any>>({});
+  const [progressMap, setProgressMap] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (!userId) {
@@ -63,152 +76,176 @@ export function useDashboardData(userId?: string) {
     }
 
     setLoading(true);
+    let unsubs: Array<() => void> = [];
 
-    // Fetch static courses list mapping
-    const coursesUnsub = onSnapshot(collection(db, "courses"), (snapshot) => {
-      const coursesMap = new Map<string, CourseData>();
-      snapshot.forEach(doc => {
+    // 1. Fetch Demo Bookings
+    const qDemo = query(collection(db, "demoRegistrations"), where("userId", "==", userId));
+    const unsubDemo = onSnapshot(qDemo, (snap) => {
+      let completedCount = 0;
+      const bookings: DemoBooking[] = [];
+      snap.forEach(doc => {
         const data = doc.data();
-        coursesMap.set(doc.id, { id: doc.id, title: data.name || data.title, ...data } as CourseData);
-      });
-
-      // Listen to progress
-      const qProgress = query(collection(db, "progress"), where("userId", "==", userId));
-      const progUnsub = onSnapshot(qProgress, (progSnap) => {
-        let totalProgress = 0;
-        const active: ActiveCourse[] = [];
-        
-        progSnap.forEach(doc => {
-          const data = doc.data();
-          totalProgress += data.percentage || 0;
-          const course = coursesMap.get(data.courseId);
-          if (course) {
-            active.push({
-              id: doc.id,
-              courseId: data.courseId,
-              title: course.title,
-              progress: data.percentage || 0,
-              nextLesson: data.nextLessonTitle || "Next Lesson",
-              duration: data.nextLessonDuration || "45 mins",
-            });
-          }
+        if (data.status === "completed") completedCount++;
+        bookings.push({
+          id: doc.id,
+          date: data.date || "TBD",
+          time: data.time || "TBD",
+          teacher: data.teacher || "TBD",
+          classLevel: data.classLevel || "N/A",
+          studentName: data.studentName || "Unknown",
+          status: data.status || "pending",
+          meetingLink: data.meetingLink,
+          timestamp: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now(),
         });
-        
-        setOverallProgress(progSnap.size > 0 ? Math.round(totalProgress / progSnap.size) : 0);
-        setActiveCourses(active);
       });
-
-      let liveClassesUnsub: any = null;
-
-      // Listen to enrollments (for live classes and count)
-      const qEnrollments = query(collection(db, "enrollments"), where("userId", "==", userId), where("status", "==", "active"));
-      const enrollUnsub = onSnapshot(qEnrollments, (enrollSnap) => {
-        setEnrolledCount(enrollSnap.size);
-        
-        const enrolledCourseIds: string[] = [];
-        enrollSnap.forEach(doc => {
-          enrolledCourseIds.push(doc.data().courseId);
-        });
-
-        if (liveClassesUnsub) {
-          liveClassesUnsub();
-          liveClassesUnsub = null;
-        }
-
-        if (enrolledCourseIds.length > 0) {
-          const qLive = query(collection(db, "liveClasses"), where("status", "==", "upcoming"));
-          liveClassesUnsub = onSnapshot(qLive, (liveSnap) => {
-            const upcoming: UpcomingLiveClassData[] = [];
-            liveSnap.forEach(doc => {
-              const data = doc.data();
-              if (enrolledCourseIds.includes(data.courseId)) {
-                const course = coursesMap.get(data.courseId);
-                
-                let dateStr = "Scheduled";
-                let timeStr = data.startTime || "";
-                
-                if (data.date) {
-                  const dateObj = new Date(data.date);
-                  const today = new Date();
-                  if (dateObj.getDate() === today.getDate() && dateObj.getMonth() === today.getMonth() && dateObj.getFullYear() === today.getFullYear()) {
-                    dateStr = "Today";
-                  } else {
-                    dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  }
-                }
-                
-                if (data.endTime) {
-                  timeStr += ` - ${data.endTime}`;
-                }
-                
-                upcoming.push({
-                  id: doc.id,
-                  title: `${course?.title || 'Course'}: ${data.title}`,
-                  date: dateStr,
-                  time: timeStr,
-                  zoomLink: data.meetingLink || ""
-                });
-              }
-            });
-            // Sort by date (you might want to convert date back to Date object for robust sorting, but strings might be fine for now)
-            setLiveClasses(upcoming);
-          });
-        } else {
-          setLiveClasses([]);
-        }
-      });
-
-      // Listen to activities. We sort client-side to avoid requiring composite indexes initially.
-      const qActivities = query(
-        collection(db, "activities"), 
-        where("userId", "==", userId)
-      );
-      
-      const actUnsub = onSnapshot(qActivities, (actSnap) => {
-        const acts: Activity[] = [];
-        actSnap.forEach(doc => {
-          const data = doc.data();
-          let dateObj = new Date();
-          if (data.timestamp && typeof data.timestamp.toDate === 'function') {
-            dateObj = data.timestamp.toDate();
-          } else if (typeof data.timestamp === 'string') {
-            dateObj = new Date(data.timestamp);
-          } else if (typeof data.timestamp === 'number') {
-            dateObj = new Date(data.timestamp);
-          }
-
-          acts.push({ 
-            id: doc.id, 
-            text: data.title || data.text || "Unknown Activity",
-            time: data.time || formatTimeAgo(dateObj),
-            timestamp: dateObj.toISOString(),
-            type: data.type
-          });
-        });
-        // Sort descending by timestamp
-        acts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setActivities(acts.slice(0, 5));
-        
-        // Once everything is subscribed and initial data is loaded
-        setLoading(false);
-      }, (err) => {
-         console.error("Failed to fetch activities:", err);
-         setLoading(false);
-      });
-
-      return () => {
-        progUnsub();
-        enrollUnsub();
-        actUnsub();
-        if (liveClassesUnsub) liveClassesUnsub();
-      };
-    }, (err) => {
-      console.error("Failed to fetch courses:", err);
-      setLoading(false);
+      bookings.sort((a, b) => b.timestamp - a.timestamp);
+      setDemoBookings(bookings);
+      setStats(s => ({ ...s, demoClassesTaken: completedCount }));
     });
+    unsubs.push(unsubDemo);
 
-    return () => coursesUnsub();
+    // 2. Fetch Activities
+    const qActivities = query(collection(db, "activities"), where("userId", "==", userId));
+    const unsubAct = onSnapshot(qActivities, (actSnap) => {
+      const acts: Activity[] = [];
+      actSnap.forEach(doc => {
+        const data = doc.data();
+        let dateObj = new Date();
+        if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+          dateObj = data.timestamp.toDate();
+        } else if (data.timestamp) {
+          dateObj = new Date(data.timestamp);
+        }
+
+        acts.push({ 
+          id: doc.id, 
+          text: data.title || data.text || "Unknown Activity",
+          time: data.time || formatTimeAgo(dateObj),
+          timestamp: dateObj.toISOString(),
+          type: data.type
+        });
+      });
+      acts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setActivities(acts.slice(0, 10)); // Top 10 activities
+    });
+    unsubs.push(unsubAct);
+
+    // 3. Centralized Store for Progress, Enrollments, and Courses
+    const unsubCourses = onSnapshot(collection(db, "courses"), (snap) => {
+      const map: Record<string, any> = {};
+      snap.forEach(doc => { map[doc.id] = { id: doc.id, ...doc.data() }; });
+      setCoursesMap(map);
+    });
+    unsubs.push(unsubCourses);
+
+    const qEnrollments = query(collection(db, "enrollments"), where("userId", "==", userId), where("status", "==", "active"));
+    const unsubEnroll = onSnapshot(qEnrollments, (snap) => {
+      const list: any[] = [];
+      snap.forEach(doc => {
+        const data = doc.data();
+        list.push({
+          id: doc.id,
+          courseId: data.courseId,
+          enrolledAt: data.enrolledAt?.toDate ? data.enrolledAt.toDate() : new Date(),
+        });
+      });
+      setEnrollments(list);
+    });
+    unsubs.push(unsubEnroll);
+
+    const qProgress = query(collection(db, "studentProgress"), where("studentId", "==", userId));
+    const unsubProgress = onSnapshot(qProgress, (snap) => {
+      const map: Record<string, any> = {};
+      snap.forEach(doc => {
+        const data = doc.data();
+        const existing = map[data.courseId];
+        const existingCount = existing?.completedLessons?.length || 0;
+        const newCount = data.completedLessons?.length || 0;
+        
+        if (!existing || newCount > existingCount) {
+          map[data.courseId] = data;
+        }
+      });
+      setProgressMap(map);
+    });
+    unsubs.push(unsubProgress);
+
+    return () => {
+      unsubs.forEach(u => u());
+    };
   }, [userId]);
 
-  return { activities, activeCourses, liveClasses, overallProgress, enrolledCount, loading };
+  useEffect(() => {
+    let isMounted = true;
+    const recomputeActiveCourses = async () => {
+      if (!enrollments.length || Object.keys(coursesMap).length === 0) {
+        if (isMounted) {
+          setActiveCourses([]);
+          setStats(s => ({ ...s, enrolledCount: 0, topicsMastered: 0 }));
+          setLoading(false);
+        }
+        return;
+      }
+      
+      let mastered = 0;
+      const merged: ActiveCourse[] = [];
+      
+      for (const enr of enrollments) {
+        const course = coursesMap[enr.courseId];
+        if (!course) continue;
+
+        const prog = progressMap[enr.courseId] || { completedLessons: [], lastLessonId: "" };
+        const completedCount = Array.isArray(prog.completedLessons) ? prog.completedLessons.length : 0;
+        mastered += completedCount;
+
+        // Get total lessons efficiently
+        let totalCount = totalLessonsCache[enr.courseId];
+        if (totalCount === undefined) {
+           try {
+             const coll = collection(db, "lessons");
+             const q = query(coll, where("courseId", "==", enr.courseId));
+             const snapshot = await getCountFromServer(q);
+             totalCount = snapshot.data().count;
+             totalLessonsCache[enr.courseId] = totalCount;
+           } catch (err) {
+             totalCount = 0;
+             totalLessonsCache[enr.courseId] = 0;
+           }
+        }
+
+        const calculatedProgress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+        let dateStr = "Recently";
+        if (enr.enrolledAt) {
+          dateStr = enr.enrolledAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        merged.push({
+          id: enr.id,
+          courseId: enr.courseId,
+          title: course.title || course.name || "Untitled Course",
+          thumbnail: course.thumbnail || course.image || "",
+          subjectClass: course.subject || course.classLevel || "General",
+          enrollmentDate: dateStr,
+          progress: calculatedProgress,
+          completedLessons: completedCount,
+          totalLessons: totalCount,
+          nextLesson: JSON.stringify(prog),
+        });
+      }
+
+      const uniqueMerged = merged.filter((v, i, a) => a.findIndex(t => (t.courseId === v.courseId)) === i);
+
+      if (isMounted) {
+        setStats(s => ({ ...s, enrolledCount: uniqueMerged.length, topicsMastered: mastered }));
+        setActiveCourses(uniqueMerged);
+        setLoading(false);
+      }
+    };
+
+    recomputeActiveCourses();
+    return () => { isMounted = false; };
+  }, [enrollments, coursesMap, progressMap]);
+
+  return { activities, activeCourses, demoBookings, stats, loading };
 }

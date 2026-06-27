@@ -6,6 +6,9 @@ import { getSeoMeta, getCanonicalLink, siteUrl } from "@/lib/seo";
 import { CheckCircle2, Clock, Users, BookOpen, Trophy, ArrowUpRight, ChevronRight, Home, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchCourseBySlug, fetchSubjectsByCourse, type Course, type Subject } from "@/lib/firestore";
+import { useAuth } from "@/hooks/use-auth";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const fetchCourseSeo = createServerFn({ method: "GET" })
   .validator((slug: string) => slug)
@@ -64,6 +67,8 @@ function CourseCurriculumPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const [isEnrolled, setIsEnrolled] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -75,10 +80,17 @@ function CourseCurriculumPage() {
       setCourse(c);
       const subs = await fetchSubjectsByCourse(c.id);
       setSubjects(subs);
+      
+      if (user) {
+        const q = query(collection(db, "enrollments"), where("userId", "==", user.id), where("courseId", "==", c.id), where("status", "==", "active"));
+        const snap = await getDocs(q);
+        setIsEnrolled(!snap.empty);
+      }
+      
       setLoading(false);
     }
     loadData();
-  }, [slug]);
+  }, [slug, user]);
 
   if (loading) {
     return (
@@ -135,15 +147,28 @@ function CourseCurriculumPage() {
                   {course.description}
                 </p>
                 <div className="mt-10 flex flex-wrap items-center gap-4">
-                  <Link
-                    to="/enroll/$courseId"
-                    params={{ courseId: course.slug || course.id }}
-                    className={`inline-flex h-14 items-center justify-center rounded-full px-8 text-sm font-bold transition-transform hover:-translate-y-1 ${
-                      isSaffron ? "bg-navy text-cream shadow-xl" : "bg-saffron text-cream shadow-xl shadow-saffron/20"
-                    }`}
-                  >
-                    Enroll Now <ArrowUpRight size={18} className="ml-2" />
-                  </Link>
+                  {isEnrolled ? (
+                    <Link
+                      to="/learn/$courseId"
+                      params={{ courseId: course.id }}
+                      search={{ lessonId: undefined }}
+                      className={`inline-flex h-14 items-center justify-center rounded-full px-8 text-sm font-bold transition-transform hover:-translate-y-1 ${
+                        isSaffron ? "bg-navy text-cream shadow-xl" : "bg-saffron text-cream shadow-xl shadow-saffron/20"
+                      }`}
+                    >
+                      Go to Course <ArrowUpRight size={18} className="ml-2" />
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/enroll/$courseId"
+                      params={{ courseId: course.slug || course.id }}
+                      className={`inline-flex h-14 items-center justify-center rounded-full px-8 text-sm font-bold transition-transform hover:-translate-y-1 ${
+                        isSaffron ? "bg-navy text-cream shadow-xl" : "bg-saffron text-cream shadow-xl shadow-saffron/20"
+                      }`}
+                    >
+                      Enroll Now <ArrowUpRight size={18} className="ml-2" />
+                    </Link>
+                  )}
                   <Link
                     to="/demo-class"
                     className="inline-flex h-14 items-center justify-center rounded-full border-2 border-cream/20 px-8 text-sm font-bold text-cream transition-colors hover:bg-cream/10"
